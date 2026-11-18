@@ -34,13 +34,16 @@ function subject(overrides = {}) {
     ...overrides,
   };
   for (const key of ['initial', 'confirmed', 'floor']) context.config[key] = { checkValidity: () => true };
-  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty'];
+  context.config['tax-2027'] ??= { value: 'current' };
+  const originalValue = context.value;
+  context.value = key => key === 'tax-2027' ? context.config[key].value : originalValue(key);
+  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty', 'taxScales'];
   const declarations = constants.map(name => {
     const match = source.match(new RegExp('^      const ' + name + ' = .+;$', 'm'));
     assert.ok(match, 'Missing constant ' + name);
     return match[0];
   });
-  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
+  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'taxForScale', 'tax2027Description', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
   const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money, formatPercent };'].join('\n');
   vm.runInNewContext(code, context);
   return { ...context.subject, context };
@@ -159,6 +162,7 @@ function storageSubject(storage = new Map(), failWrites = false, edited = true) 
     start: '0', end: '11', source: 'both', initial: '0', confirmed: '', floor: '', manual: '', optional: true,
     'kzp-enabled': false, 'kzp-start': '0', 'kzp-savings': '200', 'kzp-initial': '0', 'kzp-debt': '0', 'kzp-rate': '0',
     'pay-from': '0', 'pay-gross': '14500',
+    'tax-2027': 'current',
   };
   context.config = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === 'boolean' ? { type: 'checkbox', checked: value } : { value }]));
   for (const key of ['kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate']) {
@@ -352,4 +356,152 @@ test('payroll anchor: the January tax counters restart across years', () => {
   assert.equal(pays[12].receivedTransfer, 1021497);
   assert.equal(pays[0].tax, 117100);
   assert.equal(pays[12].tax, 117100);
+});
+
+// 2027 scenario anchors supplied for independent review: fixed cents, not
+// expectations generated from the app. Social + health stay at 2,147.61 PLN.
+for (const fixture of [
+  { income: 11500000, tax: 70500, net: 714739, currentNet: 647139 },
+  { income: 12500000, tax: 111100, net: 674139, currentNet: 547139 },
+  { income: 13500000, tax: 171100, net: 614139, currentNet: 547139 },
+  { income: 14500000, tax: 198100, net: 587139, currentNet: 547139 },
+  { income: 15000000, tax: 238100, net: 547139, currentNet: 547139 },
+]) {
+  test('2027 scenario anchor: 10,000 gross with prior income ' + fixture.income / 100, () => {
+    const app = subject();
+    const current = app.monthPayroll(1000000, fixture.income, 0, 2027);
+    assert.equal(1000000 - current.tax - current.contributions, fixture.currentNet);
+    app.context.config['tax-2027'].value = 'draft3293';
+    const scenario = app.monthPayroll(1000000, fixture.income, 0, 2027);
+    assert.equal(scenario.tax, fixture.tax);
+    assert.equal(scenario.contributions, 214761);
+    assert.equal(1000000 - scenario.tax - scenario.contributions, fixture.net);
+  });
+}
+
+test('2027 scenario anchor: one 50,000 gross transfer crosses both thresholds', () => {
+  const app = subject();
+  app.context.config['tax-2027'].value = 'draft3293';
+  const payroll = app.monthPayroll(5000000, 12500000, 0, 2027);
+  assert.equal(payroll.tax, 1082600);
+  assert.equal(payroll.contributions, 1073805);
+  assert.equal(5000000 - payroll.tax - payroll.contributions, 2843595);
+});
+
+for (const preset of ['current', 'draft3293']) {
+  test('2027 pension limit anchor: crossing 300,990 with preset ' + preset, () => {
+    const app = subject();
+    app.context.config['tax-2027'].value = preset;
+    const payroll = app.monthPayroll(1000000, 15000000, 29800000, 2027);
+    assert.equal(payroll.pensionBase, 299000);
+    assert.equal(payroll.contributions, 142932);
+    assert.equal(payroll.tax, 263400);
+    assert.equal(1000000 - payroll.tax - payroll.contributions, 593668);
+  });
+}
+
+test('2027 sample plan anchor: scenario changes November, December and the whole-year maximum', () => {
+  const app = subject({ count: key => ({ start: 12, end: 23 })[key] });
+  const current = app.calculatePlan();
+  assert.equal(current.target, 976238);
+  app.context.config['tax-2027'].value = 'draft3293';
+  const scenario = app.calculatePlan();
+  assert.equal(scenario.periods[10].received, 962897);
+  assert.equal(scenario.periods[11].received, 874297);
+  assert.equal(scenario.target, 1004347);
+  const sum = plan => plan.periods.reduce((total, row) => total + row.received, 0);
+  assert.equal(sum(scenario) - sum(current), 337300);
+  assert.equal(scenario.projection.failure, null);
+  assert.ok(app.simulate(scenario.periods, scenario.target + 1, 0, 0, 'both').failure);
+});
+
+test('changing the 2027 preset leaves every 2026 transfer and deduction unchanged', () => {
+  const app = subject();
+  app.context.bonuses.push({ amount: 5000000, date: '2026-09-10', link: null, optional: false });
+  const before = app.payrollTimeline();
+  app.context.config['tax-2027'].value = 'draft3293';
+  const after = app.payrollTimeline();
+  assert.deepEqual(after.pays.slice(0, 12), before.pays.slice(0, 12));
+  assert.deepEqual(after.separate, before.separate);
+});
+
+test('the tax preset follows the transfer year when a salary crosses New Year', () => {
+  const app = subject();
+  for (const pay of app.context.paychecks) pay.date = app.defaultPayDate(pay.index);
+  app.context.paychecks[11].date = '2027-01-04';
+  app.context.paychecks[11].gross = 20000000;
+  const currentTax = app.payrollTimeline().pays[11].tax;
+  app.context.config['tax-2027'].value = 'draft3293';
+  const scenarioTax = app.payrollTimeline().pays[11].tax;
+  assert.ok(scenarioTax < currentTax);
+  assert.equal(scenarioTax, app.monthPayroll(20000000, 0, 0, 2027).tax);
+
+  app.context.paychecks[11].date = app.defaultPayDate(11);
+  app.context.paychecks[11].gross = 1450000;
+  app.context.paychecks[12].date = '2026-12-31';
+  const earlierScenario = app.payrollTimeline().pays[12];
+  app.context.config['tax-2027'].value = 'current';
+  assert.deepEqual(app.payrollTimeline().pays[12], earlierScenario);
+});
+
+test('2027 scenario anchor: two June transfers share the threshold, KUP and PIT reduction', () => {
+  const app = subject();
+  app.context.config['tax-2027'].value = 'draft3293';
+  app.context.paychecks[17].date = '2027-06-15';
+  app.context.paychecks[17].gross = 5000000;
+  app.context.bonuses.push({ amount: 5000000, date: '2027-06-20', link: null, optional: false });
+  const { pays, separate } = app.payrollTimeline();
+  assert.equal(pays[17].tax + separate[0].tax, 1210700);
+  assert.equal(pays[17].contributions + separate[0].contributions, 2147610);
+  assert.equal(pays[17].receivedTransfer + separate[0].amount, 6641690);
+});
+
+for (const preset of ['current', 'draft3293']) {
+  test('the selected 2027 preset survives plan restoration: ' + preset, () => {
+    const app = storageSubject();
+    app.context.config['tax-2027'].value = preset;
+    app.savePlan();
+    const restored = storageSubject(app.storage, false, false);
+    restored.loadPlan();
+    assert.equal(restored.context.config['tax-2027'].value, preset);
+    assert.match(restored.context.ui['storage-status'].textContent, /Odtworzono/);
+  });
+}
+
+test('a 0.5.1 plan without the new field restores with the default preset and all its data', () => {
+  const app = storageSubject();
+  app.context.salaryChanges.set(8, 1700000);
+  app.context.bonuses.push({ type: 'award', name: 'Nagroda', amount: 123456, link: null, date: '2027-04-10', optional: false });
+  app.context.deductions.push({ kind: 'custom', name: 'Składka', amount: 20000, percent: false, start: 0, end: 23, endInput: '', frequency: 'monthly', interval: 1 });
+  app.context.config.end.value = '23';
+  app.context.config.manual.value = '8000';
+  app.savePlan();
+  const legacy = JSON.parse([...app.storage.values()][0]);
+  delete legacy.config['tax-2027'];
+  const serialized = JSON.stringify(legacy);
+  app.storage.set('kalkulator-wyplat.plan.v1', serialized);
+  const restored = storageSubject(app.storage, false, false);
+  restored.loadPlan();
+  assert.match(restored.context.ui['storage-status'].textContent, /Odtworzono/);
+  assert.equal(restored.context.config['tax-2027'].value, 'current');
+  assert.equal(JSON.stringify(restored.storedPlan()), JSON.stringify({ ...legacy, config: { ...legacy.config, 'tax-2027': 'current' } }));
+  assert.equal([...app.storage.values()][0], serialized);
+  restored.savePlan();
+  assert.equal(JSON.parse([...app.storage.values()][0]).config['tax-2027'], 'current');
+});
+
+test('unknown or malformed presets remain unreadable and are never silently replaced', () => {
+  const app = storageSubject();
+  app.savePlan();
+  const saved = JSON.parse([...app.storage.values()][0]);
+  for (const invalid of ['', 'draft3294', null, 3293, {}]) {
+    saved.config['tax-2027'] = invalid;
+    const serialized = JSON.stringify(saved);
+    const storage = new Map([['kalkulator-wyplat.plan.v1', serialized]]);
+    const restored = storageSubject(storage, false, false);
+    restored.loadPlan();
+    restored.savePlan();
+    assert.match(restored.context.ui['storage-status'].textContent, /nieczytelny/);
+    assert.equal([...storage.values()][0], serialized);
+  }
 });
