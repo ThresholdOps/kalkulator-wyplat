@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Kalkulator wypłat netto z premiami, potrąceniami i miesięcznym budżetem.">
+  <title>Kalkulator wypłat</title>
+  <style>
+    html { color-scheme: light dark; }
+    body {
+      margin: 0;
+      background: light-dark(#f3f5f1, #151d1c);
+    }
+    #payday-v4-plan-screen { max-width: 1080px; margin-inline: auto; }
+  </style>
+</head>
+<body>
+<div id="payday-v4-plan-screen" lang="pl">
+  <style>
+    #payday-v4-plan-screen {
+      color-scheme: light dark;
+      --page: light-dark(#f3f5f1, #151d1c);
+      --paper: light-dark(#ffffff, #202a28);
+      --ink: light-dark(#172621, #edf5ef);
+      --muted: light-dark(#52635b, #b6c7bd);
+      --border: light-dark(#dbe3da, #364741);
+      --soft: light-dark(#edf4ee, #293b34);
+      --green: light-dark(#174439, #163b33);
+      --mint: #c7f4c8;
+      --on-green: #f2fcf4;
+      --on-green-muted: #c5ded0;
+      --bar: light-dark(#a9c5b4, #557d6f);
+      --selected: light-dark(#28694e, #88c6a7);
+      --target: light-dark(#8c582a, #e9b47f);
+      --focus: light-dark(#146d57, #95e0bd);
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, Geist, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      overflow: hidden;
+    }
+    #payday-v4-plan-screen *, #payday-v4-plan-screen *::before, #payday-v4-plan-screen *::after { box-sizing: border-box; }
+    #payday-v4-plan-screen :is(h1, h2, p, dl, dd, figure) { margin: 0; }
+    #payday-v4-plan-screen :is(button, select) { font: inherit; }
+    #payday-v4-plan-screen :is(button, select, summary):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    #payday-v4-plan-screen .pay-appbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 15px clamp(16px, 4vw, 39px);
+      border-bottom: 1px solid var(--border);
+      background: var(--paper);
+    }
+    #payday-v4-plan-screen .pay-brand { display: flex; align-items: center; gap: 11px; font-weight: 680; }
+    #payday-v4-plan-screen .pay-brand-icon {
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      gap: 3px;
+      flex: none;
+      width: 31px;
+      height: 31px;
+      padding-bottom: 8px;
+      border-radius: 9px;
+      background: var(--green);
+    }
+    #payday-v4-plan-screen .pay-brand-icon span { width: 3px; border-radius: 1px; background: var(--mint); }
+    #payday-v4-plan-screen .pay-brand-icon span:nth-child(1) { height: 7px; }
+    #payday-v4-plan-screen .pay-brand-icon span:nth-child(2) { height: 11px; }
+    #payday-v4-plan-screen .pay-brand-icon span:nth-child(3) { height: 15px; }
+    #payday-v4-plan-screen .pay-demo { color: var(--muted); text-align: end; font-size: 12px; }
+    #payday-v4-plan-screen .pay-main { padding: 31px clamp(16px, 4vw, 39px) 32px; }
+    #payday-v4-plan-screen .pay-intro { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+    #payday-v4-plan-screen h1 { font-size: clamp(30px, 4.6vw, 45px); line-height: 1.06; letter-spacing: -.062em; font-weight: 670; }
+    #payday-v4-plan-screen .pay-period { margin-top: 8px; color: var(--muted); }
+    #payday-v4-plan-screen .pay-picker { display: grid; gap: 5px; min-width: 172px; }
+    #payday-v4-plan-screen .pay-picker label { color: var(--muted); font-size: 12px; }
+    #payday-v4-plan-screen .pay-picker select {
+      min-height: 43px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--paper);
+      color: var(--ink);
+      padding: 8px 10px;
+      font-weight: 600;
+    }
+    #payday-v4-plan-screen .pay-overview, #payday-v4-plan-screen .pay-below { display: grid; gap: 16px; }
+    #payday-v4-plan-screen .pay-overview { grid-template-columns: 1fr 1fr; }
+    #payday-v4-plan-screen .pay-below { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); margin-top: 16px; }
+    #payday-v4-plan-screen .pay-panel { min-width: 0; border: 1px solid var(--border); border-radius: 15px; background: var(--paper); }
+    #payday-v4-plan-screen .pay-metric { position: relative; padding: 20px 23px 19px; }
+    #payday-v4-plan-screen .pay-metric h2 { font-size: 15px; font-weight: 630; }
+    #payday-v4-plan-screen .pay-value {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 5px;
+      font-size: clamp(41px, 6.5vw, 63px);
+      font-variant-numeric: tabular-nums;
+      font-weight: 660;
+      letter-spacing: -.075em;
+      line-height: 1.06;
+    }
+    #payday-v4-plan-screen .pay-unit { font-size: .43em; font-weight: 540; letter-spacing: -.025em; }
+    #payday-v4-plan-screen .pay-metric-note { margin-top: 9px; color: var(--muted); font-size: 13px; }
+    #payday-v4-plan-screen .pay-equalized { background: var(--green); color: var(--on-green); border-color: transparent; overflow: hidden; }
+    #payday-v4-plan-screen .pay-equalized > * { position: relative; z-index: 1; }
+    #payday-v4-plan-screen .pay-equalized::after {
+      content: '';
+      position: absolute;
+      width: 255px;
+      height: 255px;
+      right: -80px;
+      top: -69px;
+      border-radius: 50%;
+      background: repeating-radial-gradient(circle, transparent 0 14px, #c7f4c81a 15px 16px);
+      pointer-events: none;
+    }
+    #payday-v4-plan-screen .pay-equalized .pay-metric-note { color: var(--on-green-muted); }
+    #payday-v4-plan-screen .pay-equalized .pay-value { color: var(--mint); }
+    #payday-v4-plan-screen .pay-breakdown { margin-top: 12px; }
+    #payday-v4-plan-screen .pay-breakdown summary { color: var(--focus); width: fit-content; font-size: 13px; font-weight: 620; cursor: pointer; }
+    #payday-v4-plan-screen .pay-breakdown dl { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+    #payday-v4-plan-screen .pay-row { display: flex; justify-content: space-between; align-items: baseline; gap: 7px 16px; }
+    #payday-v4-plan-screen .pay-row dd { flex: none; text-align: end; font-variant-numeric: tabular-nums; }
+    #payday-v4-plan-screen .pay-breakdown .pay-row { font-size: 12px; }
+    #payday-v4-plan-screen .pay-below h2 { font-size: 17px; font-weight: 650; letter-spacing: -.035em; }
+    #payday-v4-plan-screen .pay-chart-panel, #payday-v4-plan-screen .pay-reserve { padding: 19px 21px 18px; }
+    #payday-v4-plan-screen .pay-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    #payday-v4-plan-screen .pay-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    #payday-v4-plan-screen .pay-legend i { display: inline-block; width: 12px; height: 9px; background: var(--bar); border-radius: 2px; }
+    #payday-v4-plan-screen .pay-legend i.pay-dash { width: 16px; height: 0; background: none; border-top: 2px dashed var(--target); border-radius: 0; }
+    #payday-v4-plan-screen .pay-chart { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; margin-top: 20px; }
+    #payday-v4-plan-screen .pay-axis { position: relative; height: 119px; min-width: 43px; color: var(--muted); font-size: 11px; text-align: end; }
+    #payday-v4-plan-screen .pay-axis span { position: absolute; right: 0; transform: translateY(50%); white-space: nowrap; }
+    #payday-v4-plan-screen .pay-plot {
+      position: relative;
+      min-width: 0;
+      height: 119px;
+      border-block: 1px solid var(--border);
+      background: linear-gradient(to top, transparent calc(50% - .5px), var(--border) calc(50% - .5px), var(--border) calc(50% + .5px), transparent calc(50% + .5px));
+    }
+    #payday-v4-plan-screen .pay-bars, #payday-v4-plan-screen .pay-ticks { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    #payday-v4-plan-screen .pay-bars { position: absolute; inset: 0; }
+    #payday-v4-plan-screen .pay-bar-item { position: relative; display: grid; justify-items: center; align-items: end; }
+    #payday-v4-plan-screen .pay-bar-shape { display: block; width: 62%; max-width: 30px; height: var(--bar-height); background: var(--bar); border-radius: 4px 4px 0 0; }
+    #payday-v4-plan-screen .pay-bar-item[data-selected='true'] .pay-bar-shape { background: var(--selected); }
+    #payday-v4-plan-screen .pay-bar-item button { position: absolute; inset: 0; width: 100%; border: 0; padding: 0; background: transparent; cursor: pointer; z-index: 2; }
+    #payday-v4-plan-screen .pay-bar-item button:focus-visible { outline-offset: -2px; border-radius: 3px; }
+    #payday-v4-plan-screen .pay-target-line { position: absolute; left: 0; right: 0; bottom: var(--target-height); border-top: 2px dashed var(--target); pointer-events: none; z-index: 1; }
+    #payday-v4-plan-screen .pay-ticks { grid-column: 2; padding-top: 6px; text-align: center; color: var(--muted); font-size: 11px; }
+    #payday-v4-plan-screen .pay-ticks [data-selected='true'] { color: var(--ink); font-weight: 730; text-decoration: underline; text-underline-offset: 3px; }
+    #payday-v4-plan-screen .pay-limit { margin-top: 16px; padding-top: 11px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+    #payday-v4-plan-screen .pay-limit strong { color: var(--ink); font-weight: 650; }
+    #payday-v4-plan-screen .pay-reserve .pay-action { margin-top: 14px; padding: 11px 13px; border-radius: 9px; background: var(--soft); }
+    #payday-v4-plan-screen .pay-action-label { font-size: 13px; font-weight: 590; }
+    #payday-v4-plan-screen .pay-action-amount { margin-top: 1px; font-size: 27px; line-height: 1.2; letter-spacing: -.055em; font-weight: 675; font-variant-numeric: tabular-nums; }
+    #payday-v4-plan-screen .pay-reserve dl { display: grid; gap: 9px; margin-top: 13px; font-size: 13px; }
+    #payday-v4-plan-screen .pay-reserve dt { color: var(--muted); }
+    #payday-v4-plan-screen .pay-reserve .pay-row + .pay-row { padding-top: 9px; border-top: 1px solid var(--border); }
+    #payday-v4-plan-screen .pay-reserve .pay-row:last-child dd { font-weight: 680; }
+    #payday-v4-plan-screen .pay-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    #payday-v4-plan-screen [hidden] { display: none !important; }
+    #payday-v4-plan-screen .pay-app-actions { display: flex; align-items: center; gap: 12px; }
+    #payday-v4-plan-screen :is(.pay-button, .pay-tab) {
+      min-height: 38px;
+      padding: 7px 13px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 630;
+      cursor: pointer;
+    }
+    #payday-v4-plan-screen .pay-button:hover { background: var(--soft); }
+    #payday-v4-plan-screen .pay-primary, #payday-v4-plan-screen .pay-app-actions button[aria-expanded='true'] { background: var(--green); color: var(--on-green); border-color: var(--green); }
+    #payday-v4-plan-screen .pay-primary:hover { background: light-dark(#245746, #275146); }
+    #payday-v4-plan-screen .pay-settings { margin-bottom: 20px; padding: 19px 21px; }
+    #payday-v4-plan-screen .pay-settings h2, #payday-v4-plan-screen .pay-table-panel h2 { font-size: 19px; letter-spacing: -.045em; font-weight: 650; }
+    #payday-v4-plan-screen .pay-settings h3 { margin: 0; font-size: 15px; font-weight: 640; }
+    #payday-v4-plan-screen .pay-tab-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    #payday-v4-plan-screen .pay-tab { min-height: 34px; border-color: transparent; padding-inline: 10px; }
+    #payday-v4-plan-screen .pay-tab:is(:hover, [aria-selected='true']) { background: var(--soft); border-color: var(--border); }
+    #payday-v4-plan-screen .pay-panel-content { display: grid; gap: 14px; }
+    #payday-v4-plan-screen .pay-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    #payday-v4-plan-screen .pay-field { display: grid; min-width: 0; align-content: start; gap: 5px; font-size: 12px; font-weight: 590; }
+    #payday-v4-plan-screen .pay-field :is(input, select) {
+      width: 100%;
+      min-height: 39px;
+      min-width: 0;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 450;
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--page);
+      color: var(--ink);
+    }
+    #payday-v4-plan-screen .pay-field input[readonly] { color: var(--muted); }
+    #payday-v4-plan-screen input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    #payday-v4-plan-screen .pay-field-note, #payday-v4-plan-screen .pay-hint { color: var(--muted); font-size: 12px; font-weight: 430; }
+    #payday-v4-plan-screen .pay-check { display: flex; align-items: center; align-self: center; gap: 8px; font-size: 13px; }
+    #payday-v4-plan-screen .pay-check input { width: 16px; height: 16px; accent-color: var(--selected); }
+    #payday-v4-plan-screen .pay-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    #payday-v4-plan-screen .pay-subsettings { padding: 10px 0 0; border-top: 1px solid var(--border); }
+    #payday-v4-plan-screen .pay-subsettings summary { width: fit-content; color: var(--focus); font-weight: 620; cursor: pointer; }
+    #payday-v4-plan-screen .pay-subsettings > :is(.pay-form-grid, .pay-hint) { margin-top: 11px; }
+    #payday-v4-plan-screen .pay-form-list { list-style: none; padding: 0; margin: 0; }
+    #payday-v4-plan-screen .pay-form-list:empty { display: none; }
+    #payday-v4-plan-screen .pay-form-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); }
+    #payday-v4-plan-screen .pay-item-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
+    #payday-v4-plan-screen .pay-form-item > span { min-width: 0; overflow-wrap: anywhere; }
+    #payday-v4-plan-screen .pay-form-item[data-editing='true'] { background: var(--soft); }
+    #payday-v4-plan-screen .pay-form-item strong { font-variant-numeric: tabular-nums; }
+    #payday-v4-plan-screen .pay-danger { color: light-dark(#9c3928, #ffb09c); }
+    #payday-v4-plan-screen .pay-table-panel { margin-top: 16px; padding: 19px 21px 8px; }
+    #payday-v4-plan-screen .pay-table-title { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 13px; }
+    #payday-v4-plan-screen .pay-table-wrap { max-width: 100%; overflow-x: auto; }
+    #payday-v4-plan-screen .pay-month-table { min-width: 555px; width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    #payday-v4-plan-screen .pay-month-table :is(th, td) { padding: 10px 9px; border-bottom: 1px solid var(--border); text-align: end; font-size: 13px; }
+    #payday-v4-plan-screen .pay-month-table th:first-child { text-align: start; }
+    #payday-v4-plan-screen .pay-month-table thead th { color: var(--muted); font-weight: 580; font-size: 12px; }
+    #payday-v4-plan-screen .pay-month-table tbody tr[data-selected='true'] { background: var(--soft); }
+    #payday-v4-plan-screen .pay-month-table .pay-month-button { min-height: 30px; border: 0; padding: 3px 0; background: transparent; color: var(--ink); font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
+    #payday-v4-plan-screen .pay-month-table .pay-month-button:is(:hover, [aria-current='true']) { text-decoration: underline; text-underline-offset: 3px; }
+    #payday-v4-plan-screen .pay-month-table tfoot :is(th, td) { border-bottom: 0; font-weight: 650; }
+    #payday-v4-plan-screen .pay-month-table .pay-up { color: var(--focus); }
+    #payday-v4-plan-screen .pay-month-table .pay-down { color: var(--target); }
+    #payday-v4-plan-screen .pay-plan-alert { margin: 0 0 12px; padding: 8px 11px; border: 1px solid currentColor; border-radius: 7px; }
+    #payday-v4-plan-screen .pay-budget-settings { min-width: 0; border: 0; padding: 0; margin: 0 0 16px; }
+    #payday-v4-plan-screen .pay-budget-settings legend { margin-bottom: 8px; font-weight: 650; }
+    #payday-v4-plan-screen .pay-budget-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+    #payday-v4-plan-screen .pay-budget-choices label { min-height: 38px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--paper); cursor: pointer; }
+    #payday-v4-plan-screen .pay-budget-choices label:has(input:checked) { background: var(--soft); border-color: var(--selected); }
+    #payday-v4-plan-screen .pay-budget-amount { max-width: 300px; margin-top: 11px; }
+    #payday-v4-plan-screen .pay-field [aria-invalid='true'] { border-color: light-dark(#9c3928, #ffb09c); }
+    @media (max-width: 700px) {
+      #payday-v4-plan-screen .pay-below { grid-template-columns: 1fr; }
+      #payday-v4-plan-screen .pay-reserve { order: -1; }
+      #payday-v4-plan-screen .pay-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      #payday-v4-plan-screen .pay-main { padding-top: 22px; }
+      #payday-v4-plan-screen .pay-intro { align-items: stretch; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+      #payday-v4-plan-screen .pay-picker { min-width: 0; }
+      #payday-v4-plan-screen .pay-picker select { min-height: 44px; font-size: 16px; }
+      #payday-v4-plan-screen .pay-overview { grid-template-columns: 1fr; gap: 11px; }
+      #payday-v4-plan-screen .pay-metric { padding: 17px 19px; }
+      #payday-v4-plan-screen .pay-chart-panel, #payday-v4-plan-screen .pay-reserve { padding-inline: 15px; }
+      #payday-v4-plan-screen .pay-bar-item button { display: none; }
+      #payday-v4-plan-screen .pay-ticks span:not([data-quarter]) { visibility: hidden; }
+    }
+    @media (max-width: 440px) {
+      #payday-v4-plan-screen .pay-settings, #payday-v4-plan-screen .pay-table-panel { padding-inline: 14px; }
+      #payday-v4-plan-screen .pay-form-grid { grid-template-columns: minmax(0, 1fr); }
+      #payday-v4-plan-screen .pay-app-actions { gap: 6px; }
+      #payday-v4-plan-screen .pay-demo { max-width: 74px; }
+    }
+    @media (pointer: coarse) {
+      #payday-v4-plan-screen .pay-bar-item button { display: none; }
+      #payday-v4-plan-screen .pay-breakdown summary { min-height: 44px; padding-block: 11px; }
+      #payday-v4-plan-screen :is(.pay-button, .pay-tab, .pay-month-table .pay-month-button, .pay-field input, .pay-field select, .pay-budget-choices label) { min-height: 44px; }
+      #payday-v4-plan-screen .pay-field :is(input, select) { font-size: 16px; }
+    }
+  </style>
+
+  <header class="pay-appbar">
+    <div class="pay-brand"><span class="pay-brand-icon" aria-hidden="true"><span></span><span></span><span></span></span>Kalkulator wypłat</div>
+    <div class="pay-app-actions">
+      <span class="pay-demo" data-ui="demo-label">Dane przykładowe</span>
+      <button type="button" class="pay-button pay-primary" data-ui="settings-toggle" aria-expanded="false" aria-controls="payday-v4-settings">Wprowadź dane</button>
+    </div>
+  </header>
+
+  <main class="pay-main">
+    <div class="pay-intro">
+      <div>
+        <h1>Ile dostanę na rękę?</h1>
+        <p class="pay-period" data-ui="period-label">Plan · styczeń–grudzień 2026</p>
+      </div>
+      <div class="pay-picker">
+        <label for="payday-v4-plan-month">Miesiąc wypłaty</label>
+        <select id="payday-v4-plan-month">
+          <option value="0">Styczeń</option><option value="1">Luty</option><option value="2">Marzec</option>
+          <option value="3">Kwiecień</option><option value="4">Maj</option><option value="5" selected>Czerwiec</option>
+          <option value="6">Lipiec</option><option value="7">Sierpień</option><option value="8">Wrzesień</option>
+          <option value="9">Październik</option><option value="10">Listopad</option><option value="11">Grudzień</option>
+        </select>
+      </div>
+    </div>
+
+    <section class="pay-panel pay-settings" id="payday-v4-settings" hidden aria-labelledby="payday-v4-settings-title">
+      <h2 id="payday-v4-settings-title">Dane do obliczeń</h2>
+      <div class="pay-tab-strip" role="tablist" aria-label="Grupy ustawień">
+        <button type="button" class="pay-tab" role="tab" id="payday-v4-tab-payroll" aria-selected="true" aria-controls="payday-v4-payroll">Wynagrodzenie</button>
+        <button type="button" class="pay-tab" role="tab" id="payday-v4-tab-bonuses" aria-selected="false" aria-controls="payday-v4-bonuses">Premie i nagrody</button>
+        <button type="button" class="pay-tab" role="tab" id="payday-v4-tab-deductions" aria-selected="false" aria-controls="payday-v4-deductions">Potrącenia</button>
+        <button type="button" class="pay-tab" role="tab" id="payday-v4-tab-plan" aria-selected="false" aria-controls="payday-v4-plan">Plan i rezerwa</button>
+      </div>
+
+      <div class="pay-panel-content" id="payday-v4-plan" role="tabpanel" aria-labelledby="payday-v4-tab-plan" hidden>
+        <div class="pay-form-grid">
+          <label class="pay-field">Pierwsza pensja w planie<select data-config="start"></select></label>
+          <label class="pay-field">Ostatnia pensja w planie<select data-config="end"></select></label>
+          <label class="pay-field">Co zasila rezerwę?<select data-config="source"><option value="both">Nadwyżki z pensji oraz premie</option><option value="salary">Nadwyżki z pensji</option><option value="bonus">Premie i dodatki</option></select></label>
+          <label class="pay-field">Planowana rezerwa przed pierwszą pensją (zł)<input type="number" min="0" max="10000000" step="0.01" value="0" data-config="initial"></label>
+          <label class="pay-field">Potwierdzona rezerwa przed pierwszą pensją (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Wpisz, jeśli znasz" data-config="confirmed"></label>
+          <label class="pay-field">Wymagana rezerwa na koniec (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Jak na początku planu" data-config="floor"></label>
+          <label class="pay-check"><input type="checkbox" data-config="optional" checked> Uwzględnij opcjonalne wypłaty</label>
+        </div>
+      </div>
+
+      <div class="pay-panel-content" id="payday-v4-payroll" role="tabpanel" aria-labelledby="payday-v4-tab-payroll">
+        <div class="pay-panel-content" data-form="salary">
+          <div class="pay-form-grid">
+            <label class="pay-field">Miesięczne wynagrodzenie brutto (zł)<input type="text" inputmode="decimal" value="14500" data-config="pay-gross" aria-describedby="payday-v4-pay-feedback"><span class="pay-field-note">Kwota z umowy. Premie i nagrody dodaj osobno.</span></label>
+            <label class="pay-field">Stosuj od wypłaty za<select data-config="pay-from"></select></label>
+          </div>
+          <div class="pay-form-actions"><button type="button" class="pay-button pay-primary" data-ui="salary-save">Przelicz wypłaty</button><span class="pay-hint" data-ui="pay-feedback" id="payday-v4-pay-feedback" role="status"></span></div>
+        </div>
+        <details class="pay-subsettings">
+          <summary>Korekta pojedynczej wypłaty</summary>
+          <div class="pay-panel-content" data-form="correction" style="margin-top: 12px">
+            <h3 data-ui="payroll-month">Czerwiec 2026</h3>
+            <div class="pay-form-grid">
+              <label class="pay-field">Data wypłaty<input type="date" min="2026-01-01" max="2027-12-31" required data-config="pay-date"></label>
+              <label class="pay-field">Otrzymana kwota przelewu (zł)<input type="text" inputmode="decimal" data-config="pay-net" placeholder="Opcjonalnie"><span class="pay-field-note">Podaj cały przelew z pensją i premiami wypłaconymi razem z nią.</span></label>
+              <label class="pay-field" data-ui="pay-reason" hidden>Przyczyna zmiany daty<input type="text" maxlength="80" data-config="pay-reason"></label>
+            </div>
+            <p class="pay-hint" data-ui="salary-date-hint"></p>
+            <div class="pay-form-actions"><button type="button" class="pay-button" data-ui="correction-save">Zapisz korektę miesiąca</button><span class="pay-hint" data-ui="correction-feedback" role="status"></span></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="pay-panel-content" id="payday-v4-bonuses" role="tabpanel" aria-labelledby="payday-v4-tab-bonuses" hidden>
+        <div class="pay-panel-content" data-form="bonus">
+          <div class="pay-form-grid">
+            <label class="pay-field">Rodzaj wypłaty<select data-config="bonus-type"><option value="award">Nagroda lub inny dodatek</option><option value="monthly">Premia miesięczna</option><option value="quarterly">Premia kwartalna</option><option value="annual">Premia roczna za cele</option><option value="art32">Dodatkowa premia roczna (art. 32)</option><option value="holiday">Nagroda świąteczna</option></select></label>
+            <label class="pay-field">Kwota brutto (zł)<input type="text" inputmode="decimal" data-config="bonus-value" placeholder="Wpisz kwotę brutto" aria-describedby="payday-v4-bonus-feedback"></label>
+            <label class="pay-field">Powiązanie wypłaty<select data-config="bonus-timing"><option value="date">Własna data wpływu</option><option value="salary">Razem z pensją</option></select></label>
+            <label class="pay-field" data-ui="bonus-date">Data wpływu<input type="date" min="2026-01-01" max="2027-12-31" value="2026-06-21" data-config="bonus-date"></label>
+            <label class="pay-field" data-ui="bonus-salary" hidden>Pensja, z którą wpłynie premia<select data-config="bonus-salary"></select></label>
+            <label class="pay-field" data-ui="bonus-period" hidden>Okres premiowy<select data-config="bonus-period"></select></label>
+            <label class="pay-check"><input type="checkbox" data-config="bonus-optional"> Premia jeszcze niepewna</label>
+          </div>
+          <div class="pay-form-actions"><button type="button" class="pay-button pay-primary" data-ui="bonus-save">Dodaj premię lub nagrodę</button><button type="button" class="pay-button" data-ui="bonus-cancel" hidden>Anuluj zmianę</button><span class="pay-hint" data-ui="bonus-feedback" id="payday-v4-bonus-feedback" role="status"></span></div>
+        </div>
+        <h3>Moje premie i nagrody</h3>
+        <p class="pay-hint" data-ui="bonus-empty">Tu pojawią się dodane pozycje.</p>
+        <ul class="pay-form-list" data-ui="bonus-list" aria-label="Dodane wypłaty"></ul>
+      </div>
+
+      <div class="pay-panel-content" id="payday-v4-deductions" role="tabpanel" aria-labelledby="payday-v4-tab-deductions" hidden>
+        <p class="pay-hint">Dodaj kwoty, które pracodawca potrąca z Twojej wypłaty, np. ubezpieczenie grupowe lub pakiet medyczny.</p>
+        <div class="pay-panel-content" data-form="deduction">
+          <div class="pay-form-grid">
+            <label class="pay-field">Składnik<select data-config="deduction-kind"><option value="custom">Własne potrącenie</option><option>PPE pracownika</option><option>PPK pracownika</option><option>Ubezpieczenie grupowe</option><option>Pakiet medyczny</option><option>Składka związkowa</option><option>Rozliczenie z pracodawcą</option></select></label>
+            <label class="pay-field" data-ui="deduction-name">Nazwa<input type="text" maxlength="54" data-config="deduction-name" placeholder="Np. wpłata na fundację" aria-describedby="payday-v4-deduction-feedback"></label>
+            <label class="pay-field"><span data-ui="deduction-amount-label">Kwota (zł)</span><input type="text" inputmode="decimal" data-config="deduction-value" placeholder="Np. 125,50" aria-describedby="payday-v4-deduction-feedback"></label>
+          </div>
+          <details class="pay-subsettings" data-ui="deduction-options">
+            <summary>Terminy i sposób naliczenia</summary>
+            <div class="pay-form-grid">
+              <label class="pay-field">Sposób ustalenia kwoty<select data-config="deduction-unit"><option value="amount">Stała kwota</option><option value="percent">Procent pensji brutto</option></select></label>
+              <label class="pay-field">Częstotliwość<select data-config="deduction-frequency"><option value="monthly">Co miesiąc</option><option value="annual">Co rok</option><option value="once">Jednorazowo</option></select></label>
+              <label class="pay-field">Pierwsze potrącenie<select data-config="deduction-start"></select></label>
+              <label class="pay-field" data-ui="deduction-end">Ostatni miesiąc obowiązywania<select data-config="deduction-end"></select></label>
+            </div>
+          </details>
+          <div class="pay-form-actions"><button type="button" class="pay-button pay-primary" data-ui="deduction-save">Dodaj potrącenie</button><button type="button" class="pay-button" data-ui="deduction-cancel" hidden>Anuluj zmianę</button><span class="pay-hint" data-ui="deduction-feedback" id="payday-v4-deduction-feedback" role="status"></span></div>
+        </div>
+        <h3>Moje potrącenia</h3>
+        <p class="pay-hint" data-ui="deduction-empty">Tu pojawią się dodane pozycje.</p>
+        <ul class="pay-form-list" data-ui="deduction-list" aria-label="Dodane potrącenia"></ul>
+        <details class="pay-subsettings">
+          <summary>Kasa zapomogowo-pożyczkowa (KZP)</summary>
+          <div class="pay-form-grid">
+            <label class="pay-check"><input type="checkbox" data-config="kzp-enabled"> Uwzględnij potrącenia KZP</label>
+            <label class="pay-field">Pierwszy miesiąc potrącenia<select data-config="kzp-start"></select></label>
+            <label class="pay-field">Wkład miesięczny (zł)<input type="number" value="200" min="0" max="10000000" step="0.01" data-config="kzp-savings"></label>
+            <label class="pay-field">Wkład zgromadzony na początek (zł)<input type="number" value="0" min="0" max="10000000" step="0.01" data-config="kzp-initial"></label>
+            <label class="pay-field">Pozostały dług na początek (zł)<input type="number" value="0" min="0" max="10000000" step="0.01" data-config="kzp-debt"></label>
+            <label class="pay-field">Miesięczna rata pożyczki (zł)<input type="number" value="0" min="0" max="10000000" step="0.01" data-config="kzp-rate"></label>
+          </div>
+          <p class="pay-hint" data-ui="kzp-summary"></p>
+        </details>
+      </div>
+
+      <div class="pay-form-actions pay-subsettings" style="margin-top: 16px"><button type="button" class="pay-button" data-ui="settings-close">Wróć do wyników</button></div>
+    </section>
+
+    <fieldset class="pay-budget-settings">
+      <legend>Miesięczny budżet</legend>
+      <div class="pay-budget-choices">
+        <label class="pay-check"><input type="radio" name="payday-v4-goal" value="maximum" checked> Wylicz maksymalną kwotę</label>
+        <label class="pay-check"><input type="radio" name="payday-v4-goal" value="manual" aria-controls="payday-v4-manual-budget"> Chcę co miesiąc mieć budżet w wysokości</label>
+        <label class="pay-check"><input type="radio" name="payday-v4-goal" value="off"> Tylko wypłaty na rękę</label>
+      </div>
+      <label class="pay-field pay-budget-amount" id="payday-v4-manual-budget" data-ui="custom-target" hidden>Kwota netto na rękę (zł miesięcznie)<input type="text" inputmode="decimal" placeholder="Np. 9 000" data-config="manual" aria-describedby="payday-v4-plan-error"></label>
+    </fieldset>
+    <p class="pay-plan-alert pay-danger" id="payday-v4-plan-error" data-ui="plan-error" role="alert" hidden></p>
+
+    <div class="pay-overview" data-ui="overview">
+      <section class="pay-panel pay-metric" aria-labelledby="payday-v4-net-title">
+        <h2 id="payday-v4-net-title" data-pay="net-title">Wpłynie na konto</h2>
+        <div class="pay-value"><span data-pay="net">—</span><span class="pay-unit" data-ui="net-unit">zł</span></div>
+        <p class="pay-metric-note" data-pay="net-note">Szacunek dla umowy o pracę</p>
+        <details class="pay-breakdown" data-ui="breakdown">
+          <summary>Szczegóły wypłaty</summary>
+          <dl data-ui="breakdown-list">
+            <div class="pay-row"><dt>Pensja brutto</dt><dd data-pay="gross">—</dd></div>
+            <div class="pay-row" data-ui="breakdown-bonus-gross" hidden><dt>Premie i nagrody brutto</dt><dd data-pay="bonus-gross">—</dd></div>
+            <div class="pay-row"><dt>Składki społeczne i zdrowotna</dt><dd data-pay="contributions">—</dd></div>
+            <div class="pay-row"><dt>Zaliczka PIT</dt><dd data-pay="tax">—</dd></div>
+            <div class="pay-row"><dt>Pozostałe potrącenia</dt><dd data-pay="deductions">—</dd></div>
+          </dl>
+          <dl data-ui="breakdown-cash" hidden><div class="pay-row"><dt>Potwierdzony przelew z pensją</dt><dd data-pay="salary-cash">—</dd></div></dl>
+          <dl data-ui="breakdown-bonus" hidden><div class="pay-row"><dt>Premie i nagrody netto</dt><dd data-pay="bonus-cash">—</dd></div></dl>
+        </details>
+        <details class="pay-breakdown">
+          <summary>Założenia szacunku</summary>
+          <p class="pay-hint" style="margin-top: 7px">Umowa o pracę u jednego pracodawcy, standardowe koszty uzyskania i 300 zł miesięcznego pomniejszenia zaliczki. Dla PIT 2027 przyjęto kontynuację skali 2026. Wpłaty PPK i PPE wpisane w Potrąceniach obniżają wypłatę o część pracownika.</p>
+          <p class="pay-hint" style="margin-top: 6px">Ulgi indywidualne i wpłaty pracodawcy na PPK lub PPE mogą zmienić wynik.</p>
+        </details>
+      </section>
+      <section class="pay-panel pay-metric pay-equalized" data-ui="target-card" aria-labelledby="payday-v4-target-title">
+        <h2 id="payday-v4-target-title" data-pay="target-title">Kwota po wyrównaniu</h2>
+        <div class="pay-value"><span data-pay="target">—</span><span class="pay-unit" data-ui="target-unit">zł</span></div>
+        <p class="pay-metric-note" data-pay="target-note">Tyle do dyspozycji co miesiąc w tym planie</p>
+      </section>
+    </div>
+
+    <div class="pay-below" data-ui="below">
+      <section class="pay-panel pay-chart-panel" aria-labelledby="payday-v4-chart-title">
+        <h2 id="payday-v4-chart-title" data-pay="chart-title">Wypłaty w 2026 r.</h2>
+        <div class="pay-legend" aria-hidden="true">
+          <span><i></i> Na konto</span><span data-ui="legend-target"><i class="pay-dash"></i> Kwota po wyrównaniu</span>
+        </div>
+        <figure class="pay-chart" aria-label="Wykres wypłat netto" aria-describedby="payday-v4-chart-info">
+          <span id="payday-v4-chart-info" class="pay-visually-hidden">Kwoty odczytasz również w tabeli miesięcy pod wykresem.</span>
+          <div class="pay-axis" aria-hidden="true"><span style="bottom: 100%" data-pay="axis-top">10 tys. zł</span><span style="bottom: 50%" data-pay="axis-mid">5 tys. zł</span><span style="bottom: 0">0 zł</span></div>
+          <div class="pay-plot"><div class="pay-target-line" data-ui="target-line" aria-hidden="true"></div><div class="pay-bars"></div></div>
+          <div class="pay-ticks" aria-hidden="true"></div>
+        </figure>
+        <p class="pay-limit" data-pay="limit-month" hidden></p>
+      </section>
+
+      <section class="pay-panel pay-reserve" data-ui="reserve-card" aria-labelledby="payday-v4-reserve-title">
+        <h2 id="payday-v4-reserve-title">Co zrobić z rezerwą?</h2>
+        <div class="pay-action">
+          <p class="pay-action-label" data-pay="action-label">Zmiana rezerwy przy wypłacie</p>
+          <p class="pay-action-amount" data-pay="action-amount">—</p>
+        </div>
+        <dl>
+          <div class="pay-row"><dt>Rezerwa przed wyrównaniem</dt><dd data-pay="before">—</dd></div>
+          <div class="pay-row"><dt>Planowane saldo po wyrównaniu</dt><dd data-pay="after">—</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <section class="pay-panel pay-table-panel" aria-labelledby="payday-v4-table-title">
+      <div class="pay-table-title"><h2 id="payday-v4-table-title">Miesiąc po miesiącu</h2><p class="pay-hint" data-pay="table-caption">Okresy od pensji do pensji</p></div>
+      <div class="pay-table-wrap" aria-label="Tabela miesięcznych wypłat i rezerwy">
+        <table class="pay-month-table" aria-labelledby="payday-v4-table-title">
+          <thead><tr><th scope="col">Miesiąc pensji</th><th scope="col">Na konto</th><th scope="col" data-ui="table-target-heading">Po wyrównaniu</th><th scope="col" data-ui="table-change-heading">Zmiana rezerwy</th><th scope="col" data-ui="table-balance-heading">Rezerwa na koniec okresu</th></tr></thead>
+          <tbody data-ui="table-body"></tbody>
+          <tfoot data-ui="table-foot"></tfoot>
+        </table>
+      </div>
+      <p class="pay-hint" data-pay="outside" hidden style="margin-bottom: 10px"></p>
+    </section>
+
+    <p class="pay-visually-hidden" data-pay="live" aria-live="polite" aria-atomic="true"></p>
+  </main>
+
+  <script>
+    (() => {
+      const root = document.getElementById('payday-v4-plan-screen');
+      const monthPicker = root.querySelector('#payday-v4-plan-month');
+      const fieldsFor = kind => Object.fromEntries(Array.from(root.querySelectorAll('[data-' + kind + ']'), field => [field.dataset[kind], field]));
+      const fields = fieldsFor('pay');
+      const ui = fieldsFor('ui');
+      const config = fieldsFor('config');
+      const forms = fieldsFor('form');
+      const goals = Array.from(root.querySelectorAll('[name="payday-v4-goal"]'));
+      const bars = root.querySelector('.pay-bars');
+      const ticks = root.querySelector('.pay-ticks');
+      const plot = root.querySelector('.pay-plot');
+      const settings = root.querySelector('#payday-v4-settings');
+      const monthNames = Array.from(monthPicker.options, option => option.textContent);
+      const monthLabels = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+      const amountFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', maximumFractionDigits: 2 });
+      const dateFormat = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeZone: 'UTC' });
+      const inZloty = cents => amountFormat.format(cents / 100);
+      const money = cents => cents == null ? '—' : inZloty(cents) + ' zł';
+      const delta = cents => cents == null ? '—' : (cents < 0 ? '−' : cents > 0 ? '+' : '') + money(Math.abs(cents));
+      const value = key => config[key].value;
+      const count = key => Number(value(key));
+      const cents = key => Math.round(count(key) * 100);
+      const isoDate = date => date.toISOString().slice(0, 10);
+      const shortDate = date => dateFormat.format(new Date(date + 'T12:00:00Z'));
+
+      function enteredAmount(key) {
+        const text = value(key).trim().replace(/\s/g, '');
+        if (!/^\d{1,10}(?:[.,]\d{0,2})?$/.test(text)) return null;
+        const [whole, fraction = ''] = text.replace(',', '.').split('.');
+        const amount = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+        return amount <= 1000000000 ? amount : null;
+      }
+
+      function feedback(name, message, invalidField) {
+        const note = ui[name + '-feedback'];
+        note.className = 'pay-hint' + (invalidField ? ' pay-danger' : '');
+        note.textContent = message;
+        if (invalidField) {
+          invalidField.setAttribute('aria-invalid', 'true');
+          invalidField.focus();
+        }
+      }
+
+      function bindSave(name, save) {
+        const apply = () => {
+          for (const field of forms[name].querySelectorAll('[aria-invalid]')) field.removeAttribute('aria-invalid');
+          save();
+        };
+        ui[name + '-save'].addEventListener('click', apply);
+        forms[name].addEventListener('keydown', event => {
+          if (event.key !== 'Enter' || event.isComposing || event.target.type !== 'text') return;
+          event.preventDefault();
+          apply();
+        });
+      }
+
+      function defaultPayDate(index) {
+        const date = new Date(Date.UTC(2026, index + 1, 0));
+        let weekdays = 0;
+        while (weekdays < 2) {
+          if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6) weekdays++;
+          if (weekdays < 2) date.setUTCDate(date.getUTCDate() - 1);
+        }
+        return isoDate(date);
+      }
+
+      const paychecks = Array.from({ length: 24 }, (_, index) => ({
+        index,
+        year: 2026 + Math.floor(index / 12),
+        month: index % 12,
+        label: monthNames[index % 12] + ' ' + (2026 + Math.floor(index / 12)),
+        date: defaultPayDate(index),
+        reason: '',
+        gross: 1450000,
+        enteredNet: null,
+      }));
+      const bonuses = [];
+      const deductions = [];
+      const salaryChanges = new Map([[0, paychecks[0].gross]]);
+      let chosen = 5;
+      let plan = null;
+      let displayedYear = null;
+      const editing = { bonus: null, deduction: null };
+      const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
+
+      function create(tag, text, className) {
+        const element = document.createElement(tag);
+        if (text != null) element.textContent = text;
+        if (className) element.className = className;
+        return element;
+      }
+
+      function options(select, items) {
+        select.replaceChildren(...items.map(([value, label]) => {
+          const option = create('option', label);
+          option.value = String(value);
+          return option;
+        }));
+      }
+
+      const monthOptions = paychecks.map(pay => [pay.index, pay.label]);
+      for (const name of ['start', 'end', 'pay-from', 'bonus-salary', 'deduction-start', 'kzp-start']) options(config[name], monthOptions);
+      options(config['deduction-end'], [['', 'Bez daty końcowej'], ...monthOptions]);
+      config.end.value = '11';
+      config['bonus-salary'].value = '5';
+
+      const tabs = Array.from(settings.querySelectorAll('[role="tab"]'));
+      function openTab(tab) {
+        for (const item of tabs) {
+          const selected = item === tab;
+          item.setAttribute('aria-selected', String(selected));
+          root.querySelector('#' + item.getAttribute('aria-controls')).hidden = !selected;
+        }
+      }
+      for (const tab of tabs) tab.addEventListener('click', () => openTab(tab));
+      settings.querySelector('[role="tablist"]').addEventListener('keydown', event => {
+        const index = tabs.indexOf(event.target);
+        const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+        if (index < 0 || direction == null) return;
+        event.preventDefault();
+        const next = tabs[(index + direction + tabs.length) % tabs.length];
+        openTab(next);
+        next.focus();
+      });
+      function showSettings(open) {
+        settings.hidden = !open;
+        ui['settings-toggle'].setAttribute('aria-expanded', String(open));
+      }
+      ui['settings-toggle'].addEventListener('click', () => showSettings(settings.hidden));
+      ui['settings-close'].addEventListener('click', () => {
+        showSettings(false);
+        ui['settings-toggle'].focus();
+      });
+
+      function workplaceDeductions() {
+        const kzp = config['kzp-enabled'].checked;
+        const kzpStart = count('kzp-start');
+        const kzpSavings = cents('kzp-savings');
+        const kzpDebt = cents('kzp-debt');
+        const kzpRate = cents('kzp-rate');
+        let prepaid = 0;
+
+        const withheld = paychecks.map(pay => {
+          let extra = 0;
+          if (kzp && pay.index >= kzpStart) {
+            const repayment = Math.min(kzpRate, kzpDebt - prepaid);
+            prepaid += repayment;
+            extra += kzpSavings + repayment;
+          }
+          for (const deduction of deductions) {
+            const offset = pay.index - deduction.start;
+            if (offset < 0 || pay.index > deduction.end || offset % deduction.interval !== 0) continue;
+            extra += deduction.percent ? Math.round(pay.gross * deduction.amount / 10000) : deduction.amount;
+          }
+          return extra;
+        });
+        if (kzp) {
+          const months = Math.max(0, count('end') - kzpStart + 1);
+          ui['kzp-summary'].textContent = 'Prognoza na koniec planu. Wkład ' + money(cents('kzp-initial') + months * kzpSavings) + ', dług ' + money(Math.max(0, kzpDebt - months * kzpRate)) + '.';
+        } else {
+          ui['kzp-summary'].textContent = '';
+        }
+        return withheld;
+      }
+
+      const pensionLimits = { 2026: 28260000, 2027: 30099000 };
+      const roundRate = (amount, basisPoints) => Math.floor((amount * basisPoints + 5000) / 10000);
+      const wholeZloty = amount => Math.floor((amount + 50) / 100) * 100;
+
+      function progressiveTax(base, priorIncome, threshold, lowRate) {
+        const low = Math.min(base, Math.max(0, threshold - priorIncome));
+        return roundRate(low, lowRate) + roundRate(base - low, 3200);
+      }
+
+      function monthPayroll(gross, annualIncome, annualPensionBase, year) {
+        const pensionBase = Math.min(gross, Math.max(0, pensionLimits[year] - annualPensionBase));
+        const social = roundRate(pensionBase, 976) + roundRate(pensionBase, 150) + roundRate(gross, 245);
+        const afterSocial = gross - social;
+        const income = Math.max(0, afterSocial - 25000);
+        const taxableBase = wholeZloty(income);
+        const tax = wholeZloty(Math.max(0, progressiveTax(taxableBase, annualIncome, 12000000, 1200) - 30000));
+        const oldReduction = annualIncome < 8552800 ? 4376 : 0;
+        const oldAdvance = Math.max(0, progressiveTax(taxableBase, annualIncome, 8552800, 1700) - oldReduction);
+        const health = Math.min(roundRate(afterSocial, 900), oldAdvance);
+        return { income, pensionBase, contributions: social + health, tax };
+      }
+
+      function payrollTimeline() {
+        const deductions = workplaceDeductions();
+        const activeBonuses = bonuses.filter(bonus => config.optional.checked || !bonus.optional);
+        const events = paychecks.map(pay => ({
+          date: pay.date, pay, bonuses: activeBonuses.filter(bonus => bonus.link === pay.index),
+        }));
+        events.push(...activeBonuses.filter(bonus => bonus.link == null).map(bonus => ({ date: bonus.date, pay: null, bonuses: [bonus] })));
+        // Same-date independent transfers use the month's accumulated tax and contribution base.
+        events.sort((a, b) => a.date.localeCompare(b.date) || Number(b.pay != null) - Number(a.pay != null));
+
+        let month = '';
+        let year = 0;
+        let monthGross = 0;
+        let annualIncome = 0;
+        let annualPensionBase = 0;
+        let previous = monthPayroll(0, 0, 0, 2026);
+        const pays = [];
+        const separate = [];
+
+        for (const event of events) {
+          const eventMonth = event.date.slice(0, 7);
+          const eventYear = Number(event.date.slice(0, 4));
+          if (eventMonth !== month) {
+            annualIncome = year === eventYear ? annualIncome + previous.income : 0;
+            annualPensionBase = year === eventYear ? annualPensionBase + previous.pensionBase : 0;
+            month = eventMonth;
+            year = eventYear;
+            monthGross = 0;
+            previous = monthPayroll(0, annualIncome, annualPensionBase, year);
+          }
+          const pay = event.pay;
+          const bonusGross = event.bonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
+          const regularGross = pay?.gross ?? 0;
+          const gross = regularGross + bonusGross;
+          const totals = monthPayroll(monthGross + gross, annualIncome, annualPensionBase, year);
+          const contributions = totals.contributions - previous.contributions;
+          const tax = totals.tax - previous.tax;
+          const withheld = pay ? deductions[pay.index] : 0;
+          const totalNet = pay?.enteredNet ?? gross - contributions - tax - withheld;
+
+          if (pay) {
+            // The reserve can have different sources, so estimate the salary share without the bonus.
+            const salaryPayroll = bonusGross ? monthPayroll(monthGross + regularGross, annualIncome, annualPensionBase, year) : totals;
+            const salaryOnly = regularGross - (salaryPayroll.tax - previous.tax) - (salaryPayroll.contributions - previous.contributions) - withheld;
+            const bonusNet = bonusGross ? Math.max(0, totalNet - Math.max(0, salaryOnly)) : 0;
+            pays[pay.index] = { ...pay, salary: totalNet - bonusNet, receivedTransfer: totalNet, bonusNet, bonusGross, withheld, contributions, tax };
+          } else {
+            separate.push({ date: event.date, amount: totalNet, gross: bonusGross, contributions, tax });
+          }
+          previous = totals;
+          monthGross += gross;
+        }
+        return { pays, separate };
+      }
+
+      function collectPeriods(start, end) {
+        const { pays, separate } = payrollTimeline();
+        return pays.slice(start, end + 1).map(pay => {
+          const nextDate = pays[pay.index + 1]?.date ?? defaultPayDate(24);
+          let sameDay = pay.bonusNet;
+          let later = 0;
+          let separateGross = 0;
+          let separateContributions = 0;
+          let separateTax = 0;
+          let valid = pay.salary >= 0;
+          for (const bonus of separate) {
+            if (bonus.date < pay.date || bonus.date >= nextDate) continue;
+            if (bonus.date === pay.date) sameDay += bonus.amount;
+            else later += bonus.amount;
+            if (bonus.amount < 0) valid = false;
+            separateGross += bonus.gross;
+            separateContributions += bonus.contributions;
+            separateTax += bonus.tax;
+          }
+          return { ...pay, sameDay, later, separateGross, separateContributions, separateTax, received: valid ? pay.salary + sameDay + later : null };
+        });
+      }
+
+      function simulate(periods, target, opening, floor, source) {
+        const saveSalary = source !== 'bonus';
+        const saveBonuses = source !== 'salary';
+        const balances = new Map();
+        let reserve = opening;
+        let outside = 0;
+        for (const row of periods) {
+          const starting = reserve;
+          if (saveBonuses) reserve += row.sameDay;
+          else outside += row.sameDay + row.later;
+          const before = reserve;
+          const difference = row.salary - target;
+          if (difference < 0 && before < -difference) {
+            return { balances, failure: { index: row.index, shortfall: -difference - before }, outside };
+          }
+          if (saveSalary || difference < 0) reserve += difference;
+          else outside += difference;
+          const after = reserve;
+          if (saveBonuses) reserve += row.later;
+          balances.set(row.index, { before, after, atEnd: reserve, atPayday: after - starting, forPeriod: reserve - starting });
+        }
+        return { balances, failure: reserve < floor ? { index: null, shortfall: floor - reserve } : null, outside, closing: reserve, opening };
+      }
+
+      function calculatePlan() {
+        const start = count('start');
+        const end = count('end');
+        const periods = collectPeriods(start, end);
+        const result = { periods, target: null, projection: null, limit: null, error: '', mode: goals.find(goal => goal.checked).value };
+        if (config['kzp-enabled'].checked && ['kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate'].some(key => !config[key].checkValidity())) {
+          result.error = 'Sprawdź kwoty składek i spłat KZP w ustawieniach potrąceń.';
+          return result;
+        }
+        const invalid = periods.find(row => row.received == null);
+        if (invalid) {
+          result.error = invalid.label + ' — potrącenia przekraczają kwotę brutto. Sprawdź pozycje z listy płac.';
+          return result;
+        }
+        if (result.mode === 'off') return result;
+
+        if (['initial', 'confirmed', 'floor'].some(key => !config[key].checkValidity())) {
+          result.error = 'Sprawdź kwoty w ustawieniach planu.';
+          return result;
+        }
+        const opening = value('confirmed') === '' ? cents('initial') : cents('confirmed');
+        const floor = value('floor') === '' ? opening : cents('floor');
+        const run = target => simulate(periods, target, opening, floor, value('source'));
+
+        if (result.mode === 'manual') {
+          if (!value('manual').trim()) return result;
+          result.target = enteredAmount('manual');
+          if (result.target == null) {
+            result.error = 'Wpisz miesięczną kwotę netto, np. 9 000,50 zł.';
+            result.invalidTarget = true;
+            return result;
+          }
+          result.projection = run(result.target);
+          if (result.projection.failure) result.error = failureMessage(result.projection.failure);
+          return result;
+        }
+
+        if (run(0).failure) {
+          result.error = 'Brak wykonalnej kwoty. ' + failureMessage(run(0).failure);
+          return result;
+        }
+        let low = 0;
+        let high = Math.floor((opening + periods.reduce((sum, row) => sum + row.received, 0)) / periods.length);
+        while (low < high) {
+          const candidate = Math.floor((low + high + 1) / 2);
+          if (run(candidate).failure) high = candidate - 1;
+          else low = candidate;
+        }
+        result.target = low;
+        result.projection = run(low);
+        result.limit = run(low + 1).failure;
+        return result;
+      }
+
+      function failureMessage(failure) {
+        return failure.index == null
+          ? 'Na koniec planu do wymaganej rezerwy zabraknie ' + money(failure.shortfall) + '.'
+          : paychecks[failure.index].label + ' — przy pensji zabraknie ' + money(failure.shortfall) + '.';
+      }
+
+      function populatePaycheck() {
+        const pay = paychecks[chosen];
+        ui['payroll-month'].textContent = pay.label;
+        config['pay-date'].value = pay.date;
+        config['pay-reason'].value = pay.reason;
+        config['pay-net'].value = pay.enteredNet == null ? '' : pay.enteredNet / 100;
+        ui['correction-feedback'].textContent = '';
+        showCorrectionFields();
+      }
+
+      function showCorrectionFields() {
+        const automatic = defaultPayDate(chosen);
+        const changed = value('pay-date') !== automatic;
+        ui['pay-reason'].hidden = !changed;
+        config['pay-reason'].required = changed;
+        ui['salary-date-hint'].textContent = 'Planowana data wypłaty — ' + shortDate(automatic) + '.';
+      }
+
+      config['pay-from'].addEventListener('change', () => {
+        config['pay-gross'].value = paychecks[count('pay-from')].gross / 100;
+        ui['pay-feedback'].textContent = '';
+      });
+      bindSave('salary', () => {
+        const amount = enteredAmount('pay-gross');
+        if (amount == null) {
+          feedback('pay', 'Wpisz miesięczne wynagrodzenie brutto, np. 14 500.', config['pay-gross']);
+          return;
+        }
+        const from = count('pay-from');
+        salaryChanges.set(from, amount);
+        let gross = 0;
+        for (const pay of paychecks) {
+          gross = salaryChanges.get(pay.index) ?? gross;
+          pay.gross = gross;
+        }
+        markEdited();
+        refresh();
+        feedback('pay', 'Zapisano wynagrodzenie od ' + paychecks[from].label + '.');
+      });
+
+      config['pay-date'].addEventListener('change', showCorrectionFields);
+      bindSave('correction', () => {
+        const date = value('pay-date');
+        const previous = paychecks[chosen - 1]?.date;
+        const next = paychecks[chosen + 1]?.date ?? defaultPayDate(24);
+        if (!config['pay-date'].checkValidity() || (previous && date <= previous) || date >= next) {
+          feedback('correction', 'Wybierz datę między sąsiednimi wypłatami.', config['pay-date']);
+          return;
+        }
+        const reason = value('pay-reason').trim();
+        const changed = date !== defaultPayDate(chosen);
+        if (changed && !reason) {
+          feedback('correction', 'Wpisz przyczynę zmiany daty.', config['pay-reason']);
+          return;
+        }
+        const hasAmount = !!value('pay-net').trim();
+        const enteredNet = hasAmount ? enteredAmount('pay-net') : null;
+        if (hasAmount && enteredNet == null) {
+          feedback('correction', 'Wpisz kwotę otrzymanego przelewu, np. 8 546,32.', config['pay-net']);
+          return;
+        }
+        const pay = paychecks[chosen];
+        pay.date = date;
+        pay.reason = changed ? reason : '';
+        pay.enteredNet = enteredNet;
+        markEdited();
+        refresh();
+        feedback('correction', 'Zapisano korektę dla wypłaty za ' + monthNames[pay.month].toLowerCase() + '.');
+      });
+
+      function markEdited() {
+        ui['demo-label'].textContent = 'Szacunkowy plan';
+      }
+
+      const monthPeriods = [[0, 'Grudzień 2025'], ...monthOptions.map(([index, label]) => [index + 1, label])];
+      const quarterPeriods = [[1, 'IV kwartał 2025'], ...Array.from({ length: 8 }, (_, index) => [4 + index * 3, ['I', 'II', 'III', 'IV'][index % 4] + ' kwartał ' + (2026 + Math.floor(index / 4))])];
+      function showBonusFields(resetPeriod = false) {
+        const type = value('bonus-type');
+        const fixed = type === 'monthly' || type === 'quarterly';
+        if (fixed && resetPeriod) options(config['bonus-period'], type === 'monthly' ? monthPeriods : quarterPeriods);
+        config['bonus-timing'].disabled = fixed;
+        if (fixed) config['bonus-timing'].value = 'salary';
+        const tied = value('bonus-timing') === 'salary';
+        ui['bonus-date'].hidden = tied;
+        ui['bonus-salary'].hidden = fixed || !tied;
+        ui['bonus-period'].hidden = !fixed;
+        config['bonus-date'].required = !tied;
+      }
+
+      config['bonus-type'].addEventListener('change', () => {
+        const type = value('bonus-type');
+        if (type === 'annual') config['bonus-date'].value = paychecks[chosen].year + '-06-21';
+        if (type === 'holiday') config['bonus-date'].value = paychecks[chosen].year + '-04-10';
+        if (type !== 'monthly' && type !== 'quarterly') config['bonus-timing'].value = 'date';
+        showBonusFields(true);
+      });
+      config['bonus-timing'].addEventListener('change', () => showBonusFields());
+
+      function beginEdit(kind, entry) {
+        editing[kind] = entry;
+        ui[kind + '-save'].textContent = 'Zapisz zmianę';
+        ui[kind + '-cancel'].hidden = false;
+        config[kind + '-value'].removeAttribute('aria-invalid');
+        feedback(kind, 'Edytujesz: ' + entry.name + '.');
+      }
+
+      function finishEdit(kind) {
+        editing[kind] = null;
+        for (const row of ui[kind + '-list'].children) row.dataset.editing = 'false';
+        ui[kind + '-save'].textContent = addLabels[kind];
+        ui[kind + '-cancel'].hidden = true;
+        config[kind + '-value'].removeAttribute('aria-invalid');
+        config[kind + '-value'].value = '';
+      }
+
+      for (const kind of ['bonus', 'deduction']) {
+        ui[kind + '-cancel'].addEventListener('click', () => {
+          finishEdit(kind);
+          feedback(kind, 'Anulowano edycję.');
+          ui[kind + '-save'].focus();
+        });
+      }
+
+      function startBonusEdit(entry) {
+        beginEdit('bonus', entry);
+        config['bonus-type'].value = entry.type;
+        config['bonus-timing'].value = entry.link == null ? 'date' : 'salary';
+        config['bonus-date'].value = entry.date;
+        config['bonus-optional'].checked = entry.optional;
+        config['bonus-value'].value = inZloty(entry.amount);
+        showBonusFields(true);
+        if (entry.link != null) {
+          if (entry.type === 'monthly' || entry.type === 'quarterly') config['bonus-period'].value = String(entry.link);
+          else config['bonus-salary'].value = String(entry.link);
+        }
+        config['bonus-value'].focus();
+      }
+
+      bindSave('bonus', () => {
+        const amount = enteredAmount('bonus-value');
+        if (!amount) {
+          feedback('bonus', 'Wpisz kwotę brutto większą od zera.', config['bonus-value']);
+          return;
+        }
+        const type = value('bonus-type');
+        const fixed = type === 'monthly' || type === 'quarterly';
+        const link = fixed ? count('bonus-period') : value('bonus-timing') === 'salary' ? count('bonus-salary') : null;
+        if (link != null && !paychecks[link]) {
+          feedback('bonus', 'Wybierz okres, którego wypłata przypada w 2026 lub 2027 r.', config[fixed ? 'bonus-period' : 'bonus-salary']);
+          return;
+        }
+        if (link == null && !config['bonus-date'].checkValidity()) {
+          feedback('bonus', 'Wybierz datę wpływu w 2026 lub 2027 r.', config['bonus-date']);
+          return;
+        }
+        const entry = {
+          type,
+          name: config['bonus-type'].selectedOptions[0].textContent,
+          amount,
+          link,
+          date: value('bonus-date'),
+          optional: config['bonus-optional'].checked,
+        };
+        const updating = editing.bonus != null;
+        if (updating) Object.assign(editing.bonus, entry);
+        else bonuses.push(entry);
+        finishEdit('bonus');
+        markEdited();
+        refresh();
+        feedback('bonus', (updating ? 'Zapisano zmianę' : 'Dodano do listy') + ' — ' + entry.name + ', ' + money(entry.amount) + ' brutto.');
+      });
+
+      function showDeductionFields() {
+        const custom = value('deduction-kind') === 'custom';
+        const percent = value('deduction-unit') === 'percent';
+        ui['deduction-name'].hidden = !custom;
+        config['deduction-name'].required = custom;
+        ui['deduction-end'].hidden = value('deduction-frequency') === 'once';
+        ui['deduction-amount-label'].textContent = percent ? 'Procent brutto (%)' : 'Kwota (zł)';
+      }
+
+      for (const name of ['deduction-kind', 'deduction-unit', 'deduction-frequency']) config[name].addEventListener('change', showDeductionFields);
+      function startDeductionEdit(entry) {
+        beginEdit('deduction', entry);
+        config['deduction-kind'].value = entry.kind;
+        config['deduction-name'].value = entry.kind === 'custom' ? entry.name : '';
+        config['deduction-unit'].value = entry.percent ? 'percent' : 'amount';
+        config['deduction-value'].value = inZloty(entry.amount);
+        config['deduction-frequency'].value = entry.frequency;
+        config['deduction-start'].value = String(entry.start);
+        config['deduction-end'].value = entry.endInput;
+        ui['deduction-options'].open = entry.percent || entry.frequency !== 'monthly' || !!entry.start || !!entry.endInput;
+        showDeductionFields();
+        config['deduction-value'].focus();
+      }
+
+      bindSave('deduction', () => {
+        const kind = value('deduction-kind');
+        const name = kind === 'custom' ? value('deduction-name').trim() : kind;
+        if (!name) {
+          feedback('deduction', 'Wpisz nazwę potrącenia.', config['deduction-name']);
+          return;
+        }
+        const amount = enteredAmount('deduction-value');
+        const percent = value('deduction-unit') === 'percent';
+        if (!amount || (percent && amount > 10000)) {
+          feedback('deduction', percent ? 'Wpisz procent większy od 0 i nie większy niż 100.' : 'Wpisz kwotę większą od zera, np. 125,50.', config['deduction-value']);
+          return;
+        }
+        const start = count('deduction-start');
+        const frequency = value('deduction-frequency');
+        const endInput = value('deduction-end');
+        const end = frequency === 'once' ? start : endInput === '' ? paychecks.length - 1 : Number(endInput);
+        if (start > end) {
+          ui['deduction-options'].open = true;
+          feedback('deduction', 'Ostatni miesiąc musi przypaść po pierwszym lub w tym samym miesiącu.', config['deduction-end']);
+          return;
+        }
+        const entry = { name, kind, start, end, endInput, amount, percent, interval: frequency === 'annual' ? 12 : 1, frequency };
+        const updating = editing.deduction != null;
+        if (updating) Object.assign(editing.deduction, entry);
+        else deductions.push(entry);
+        finishEdit('deduction');
+        markEdited();
+        refresh();
+        feedback('deduction', (updating ? 'Zapisano zmianę' : 'Dodano do listy') + ' — ' + name + ', ' + (percent ? inZloty(amount) + '%' : money(amount)) + '.');
+      });
+
+      function renderList(kind, entries, label, edit) {
+        ui[kind + '-list'].replaceChildren(...entries.map(entry => {
+          const item = create('li', null, 'pay-form-item');
+          item.dataset.editing = String(entry === editing[kind]);
+          const actions = create('div', null, 'pay-item-actions');
+          const editButton = create('button', 'Edytuj', 'pay-button');
+          editButton.type = 'button';
+          editButton.setAttribute('aria-label', 'Edytuj ' + entry.name);
+          editButton.addEventListener('click', () => {
+            for (const row of ui[kind + '-list'].children) row.dataset.editing = String(row === item);
+            edit(entry);
+          });
+          actions.append(editButton);
+          const button = create('button', 'Usuń', 'pay-button');
+          button.type = 'button';
+          button.setAttribute('aria-label', 'Usuń ' + entry.name);
+          button.addEventListener('click', () => {
+            entries.splice(entries.indexOf(entry), 1);
+            if (entry === editing[kind]) finishEdit(kind);
+            refresh();
+            feedback(kind, 'Usunięto: ' + entry.name + '.');
+            ui[kind + '-save'].focus();
+          });
+          actions.append(button);
+          item.append(create('span', label(entry)), actions);
+          return item;
+        }));
+      }
+
+      function renderChart() {
+        displayedYear = paychecks[chosen].year;
+        fields['chart-title'].textContent = 'Wypłaty w ' + displayedYear + ' r.';
+        const subset = plan.periods.filter(row => row.year === displayedYear);
+        const ceiling = Math.max(200000, Math.ceil(Math.max(plan.target ?? 0, ...subset.map(row => row.received ?? 0)) / 200000) * 200000);
+        fields['axis-top'].textContent = inZloty(ceiling / 1000) + ' tys. zł';
+        fields['axis-mid'].textContent = inZloty(ceiling / 2000) + ' tys. zł';
+        plot.style.setProperty('--target-height', `${(plan.target ?? 0) / ceiling * 100}%`);
+        bars.style.gridTemplateColumns = ticks.style.gridTemplateColumns = 'repeat(' + subset.length + ', minmax(0, 1fr))';
+        bars.replaceChildren();
+        ticks.replaceChildren();
+        subset.forEach((row, ordinal) => {
+          const item = create('div', null, 'pay-bar-item');
+          item.dataset.month = String(row.index);
+          item.style.setProperty('--bar-height', `${(row.received ?? 0) / ceiling * 100}%`);
+          const shape = create('span', null, 'pay-bar-shape');
+          shape.setAttribute('aria-hidden', 'true');
+          const button = create('button');
+          button.type = 'button';
+          button.setAttribute('aria-label', row.label + ', na konto ' + money(row.received));
+          button.addEventListener('click', () => selectMonth(row.index));
+          item.append(shape, button);
+          bars.append(item);
+          const tick = create('span', monthLabels[row.month]);
+          tick.dataset.month = String(row.index);
+          if (ordinal % Math.ceil(subset.length / 4) === 0) tick.setAttribute('data-quarter', '');
+          ticks.append(tick);
+        });
+      }
+
+      function renderTable() {
+        const hideReserve = plan.mode === 'off';
+        for (const key of ['target', 'change', 'balance']) ui['table-' + key + '-heading'].hidden = hideReserve;
+        const displayedMoney = (value, className) => create('td', money(value), className);
+        ui['table-body'].replaceChildren(...plan.periods.map(row => {
+          const tableRow = create('tr');
+          tableRow.dataset.month = String(row.index);
+          const heading = create('th');
+          heading.scope = 'row';
+          const button = create('button', row.label, 'pay-month-button');
+          button.type = 'button';
+          button.addEventListener('click', () => selectMonth(row.index));
+          heading.append(button);
+          tableRow.append(heading, displayedMoney(row.received));
+          if (!hideReserve) {
+            const balance = plan.projection?.balances.get(row.index);
+            const change = balance?.forPeriod;
+            const tone = change > 0 ? 'pay-up' : change < 0 ? 'pay-down' : '';
+            tableRow.append(displayedMoney(balance ? plan.target : null), create('td', delta(change), tone), displayedMoney(balance?.atEnd));
+          }
+          return tableRow;
+        }));
+
+        const totalRow = create('tr');
+        const heading = create('th', 'Cały plan');
+        heading.scope = 'row';
+        const paid = plan.periods.some(row => row.received == null) ? null : plan.periods.reduce((sum, row) => sum + row.received, 0);
+        totalRow.append(heading, displayedMoney(paid));
+        if (!hideReserve) {
+          const projection = plan.projection;
+          const closed = projection && !projection.failure;
+          const change = closed ? projection.closing - projection.opening : null;
+          totalRow.append(displayedMoney(closed ? plan.target * plan.periods.length : null), create('td', delta(change)), displayedMoney(projection?.closing));
+        }
+        ui['table-foot'].replaceChildren(totalRow);
+        fields.outside.hidden = !plan.projection || !!plan.projection.failure || !plan.projection.outside;
+        fields.outside.textContent = fields.outside.hidden ? '' : 'Środki poza wyrównywaniem w tym planie — ' + money(plan.projection.outside) + '.';
+      }
+
+      function selectMonth(index) {
+        chosen = index;
+        const row = plan.periods.find(pay => pay.index === index);
+        if (displayedYear !== row.year) renderChart();
+        monthPicker.value = String(index);
+        fields.net.textContent = row.received == null ? '—' : inZloty(row.received);
+        ui['net-unit'].hidden = row.received == null;
+        const actual = row.enteredNet != null;
+        const separate = row.separateGross > 0;
+        const bonusNet = row.sameDay + row.later - (actual ? row.bonusNet : 0);
+        const bonusGross = row.separateGross + row.bonusGross;
+        fields['net-title'].textContent = actual && !separate ? 'Wpłynęło na konto' : 'Wpłynie na konto';
+        fields['net-note'].textContent = actual && !separate ? 'Potwierdzona kwota przelewu' : bonusGross ? 'Pensja i dodatki do dnia przed kolejną pensją' : 'Szacunek po składkach, podatku i potrąceniach';
+        fields.gross.textContent = money(row.gross);
+        fields['bonus-gross'].textContent = money(bonusGross);
+        fields.contributions.textContent = delta(-row.contributions - row.separateContributions);
+        fields.tax.textContent = delta(-row.tax - row.separateTax);
+        fields.deductions.textContent = delta(-row.withheld);
+        fields['salary-cash'].textContent = money(row.receivedTransfer);
+        fields['bonus-cash'].textContent = money(bonusNet);
+        ui['breakdown-list'].hidden = actual;
+        ui['breakdown-cash'].hidden = !actual;
+        ui['breakdown-bonus-gross'].hidden = !bonusGross;
+        ui['breakdown-bonus'].hidden = !(actual ? separate : bonusGross);
+
+        const balance = plan.projection?.balances.get(index);
+        const change = balance?.atPayday;
+        const failure = plan.projection?.failure;
+        const currentFailure = failure?.index === index;
+        fields['action-label'].textContent = currentFailure ? 'Brakuje przy tej wypłacie' : !balance ? 'Brak wyliczenia dla tego miesiąca' : change < 0 ? 'Dobierz z rezerwy' : change > 0 ? 'Odłóż do rezerwy' : 'Rezerwa bez zmian przy wypłacie';
+        fields['action-amount'].textContent = currentFailure ? money(failure.shortfall) : money(balance ? Math.abs(change) : null);
+        fields.before.textContent = money(balance?.before);
+        fields.after.textContent = money(balance?.after);
+        fields.live.textContent = row.label + '. Na konto: ' + money(row.received) + '. ' + fields['action-label'].textContent + ': ' + fields['action-amount'].textContent + '.';
+
+        for (const item of root.querySelectorAll('[data-month]')) {
+          const selected = index === Number(item.dataset.month);
+          item.dataset.selected = String(selected);
+          if (item.matches('.pay-bar-item')) item.querySelector('button').setAttribute('aria-pressed', String(selected));
+          if (item.matches('tr')) item.querySelector('button').setAttribute('aria-current', String(selected));
+        }
+        populatePaycheck();
+      }
+
+      function refresh() {
+        plan = calculatePlan();
+        const first = plan.periods[0];
+        const last = plan.periods.at(-1);
+        chosen = Math.min(Math.max(chosen, first.index), last.index);
+        options(monthPicker, plan.periods.map(row => [row.index, row.label]));
+        ui['period-label'].textContent = 'Plan · ' + (first.index === last.index ? first.label : first.label + ' – ' + last.label);
+        ui['plan-error'].textContent = plan.error;
+        ui['plan-error'].hidden = !plan.error;
+        const off = plan.mode === 'off';
+        ui['custom-target'].hidden = plan.mode !== 'manual';
+        if (plan.invalidTarget) config.manual.setAttribute('aria-invalid', 'true');
+        else config.manual.removeAttribute('aria-invalid');
+        ui['target-card'].hidden = ui['reserve-card'].hidden = off;
+        ui.overview.style.gridTemplateColumns = ui.below.style.gridTemplateColumns = off ? '1fr' : '';
+        ui['target-line'].hidden = ui['legend-target'].hidden = plan.target == null;
+        ui['target-unit'].hidden = plan.target == null;
+        fields.target.textContent = plan.target == null ? '—' : inZloty(plan.target);
+        fields['target-title'].textContent = plan.mode === 'manual' ? 'Twój miesięczny budżet' : 'Kwota po wyrównaniu';
+        if (plan.error) fields['target-note'].textContent = 'Sprawdź komunikat nad wynikiem.';
+        else if (plan.mode === 'manual') fields['target-note'].textContent = plan.target == null ? 'Wpisz kwotę netto, którą chcesz sprawdzić.' : 'Da się utrzymać tę kwotę przez cały plan.';
+        else fields['target-note'].textContent = value('confirmed') !== '' ? 'Plan od potwierdzonej rezerwy początkowej' : 'Tyle do dyspozycji co miesiąc w tym planie';
+        fields['limit-month'].hidden = off || !plan.limit;
+        if (plan.limit) fields['limit-month'].textContent = plan.limit.index == null ? 'Wymagana rezerwa na koniec planu wyznacza limit.' : paychecks[plan.limit.index].label + ' wyznacza limit. Przy wyższej kwocie w tym okresie zabrakłoby środków.';
+        fields['table-caption'].textContent = (config.optional.checked ? 'Z opcjonalnymi wpływami' : 'Bez opcjonalnych wpływów') + ' · od pensji do pensji';
+
+        renderChart();
+        renderTable();
+        selectMonth(chosen);
+        renderList('bonus', bonuses, bonus => bonus.name + ' · ' + money(bonus.amount) + ' brutto · ' + shortDate(bonus.link == null ? bonus.date : paychecks[bonus.link].date) + (bonus.optional ? ' · niepewna' : ''), startBonusEdit);
+        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? inZloty(deduction.amount) + '%' : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + paychecks[deduction.start].label + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + paychecks[deduction.end].label : ''), startDeductionEdit);
+        ui['bonus-empty'].hidden = bonuses.length > 0;
+        ui['deduction-empty'].hidden = deductions.length > 0;
+      }
+
+      config.start.addEventListener('change', () => {
+        if (count('start') > count('end')) config.end.value = config.start.value;
+        refresh();
+      });
+      config.end.addEventListener('change', () => {
+        if (count('end') < count('start')) config.start.value = config.end.value;
+        refresh();
+      });
+      for (const key of ['source', 'initial', 'confirmed', 'floor', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate']) {
+        config[key].addEventListener('change', refresh);
+      }
+      for (const goal of goals) goal.addEventListener('change', refresh);
+      config.manual.addEventListener('input', refresh);
+      monthPicker.addEventListener('change', () => selectMonth(Number(monthPicker.value)));
+      showBonusFields(true);
+      showDeductionFields();
+      refresh();
+    })();
+  </script>
+</div>
+</body>
+</html>
