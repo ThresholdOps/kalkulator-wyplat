@@ -705,9 +705,10 @@
             return;
           }
           const serialized = JSON.stringify(data);
-          if (serialized === savedSnapshot) return;
-          window.localStorage.setItem(storageKey, serialized);
-          savedSnapshot = serialized;
+          if (serialized !== savedSnapshot) {
+            window.localStorage.setItem(storageKey, serialized);
+            savedSnapshot = serialized;
+          }
           ui['storage-clear'].hidden = false;
           ui['storage-status'].className = 'pay-hint';
           ui['storage-status'].textContent = 'Zapisano plan na tym urządzeniu.';
