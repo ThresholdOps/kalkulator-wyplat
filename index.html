@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.4.1">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.5.0">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -231,6 +231,7 @@
     #payday-v4-plan-screen .pay-month-table .pay-up { color: var(--focus); }
     #payday-v4-plan-screen .pay-month-table .pay-down { color: var(--target); }
     #payday-v4-plan-screen .pay-plan-alert { margin: 0 0 12px; padding: 8px 11px; border: 1px solid currentColor; border-radius: 7px; }
+    #payday-v4-plan-screen .pay-storage { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: -8px 0 20px; }
     #payday-v4-plan-screen .pay-budget-settings { min-width: 0; border: 0; padding: 0; margin: 0 0 16px; }
     #payday-v4-plan-screen .pay-budget-settings legend { margin-bottom: 8px; font-weight: 650; }
     #payday-v4-plan-screen .pay-budget-choices { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -291,6 +292,11 @@
           <option value="9">Październik</option><option value="10">Listopad</option><option value="11">Grudzień</option>
         </select>
       </div>
+    </div>
+
+    <div class="pay-storage">
+      <p class="pay-hint" data-ui="storage-status" role="status">Plan zapisuje się automatycznie na tym urządzeniu.</p>
+      <button type="button" class="pay-button" data-ui="storage-clear" hidden>Usuń zapisany plan</button>
     </div>
 
     <section class="pay-panel pay-settings" id="payday-v4-settings" hidden aria-labelledby="payday-v4-settings-title">
@@ -499,6 +505,7 @@
       const numberFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', maximumFractionDigits: 2 });
       const dateFormat = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeZone: 'UTC' });
       const inZloty = cents => amountFormat.format(cents / 100);
+      const formatPercent = amount => numberFormat.format(amount / 100) + '%';
       const money = cents => cents == null ? '—' : inZloty(cents) + ' zł';
       const delta = cents => cents == null ? '—' : (cents < 0 ? '−' : cents > 0 ? '+' : '') + money(Math.abs(cents));
       const value = key => config[key].value;
@@ -566,6 +573,11 @@
       let displayedYear = null;
       const editing = { bonus: null, deduction: null };
       const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
+      const storageKey = 'kalkulator-wyplat.plan.v1';
+      const initialPaychecks = paychecks.map(pay => ({ ...pay }));
+      const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate'];
+      let savedSnapshot = null;
+      let storageBlocked = false;
 
       function create(tag, text, className) {
         const element = document.createElement(tag);
@@ -587,6 +599,137 @@
       options(config['deduction-end'], [['', 'Bez daty końcowej'], ...monthOptions]);
       config.end.value = '11';
       config['bonus-salary'].value = '5';
+      const initialConfig = Object.fromEntries(savedConfigKeys.map(key => [key, config[key].type === 'checkbox' ? config[key].checked : config[key].value]));
+
+      function storedPlan() {
+        return {
+          version: 1,
+          salaryChanges: Array.from(salaryChanges),
+          corrections: paychecks.filter(pay => pay.date !== defaultPayDate(pay.index) || pay.enteredNet != null).map(pay => ({ index: pay.index, date: pay.date, reason: pay.reason, enteredNet: pay.enteredNet })),
+          bonuses,
+          deductions,
+          config: Object.fromEntries(savedConfigKeys.map(key => [key, config[key].type === 'checkbox' ? config[key].checked : config[key].value])),
+          goal: goals.find(goal => goal.checked).value,
+          chosen,
+        };
+      }
+
+      function validStoredPlan(data) {
+        const monthIndex = value => Number.isInteger(value) && value >= 0 && value < paychecks.length;
+        const amount = value => Number.isSafeInteger(value) && value >= 0 && value <= 1000000000;
+        const text = (value, max) => typeof value === 'string' && value.length <= max;
+        const date = value => {
+          if (!text(value, 10) || !/^202[67]-\d{2}-\d{2}$/.test(value)) return false;
+          const parsed = new Date(value + 'T12:00:00Z');
+          return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+        };
+        if (!data || data.version !== 1 || !['maximum', 'manual', 'off'].includes(data.goal) || !monthIndex(data.chosen)) return false;
+        if (!Array.isArray(data.salaryChanges) || data.salaryChanges.length > 24 || !data.salaryChanges.length) return false;
+        if (!data.salaryChanges.every(row => Array.isArray(row) && row.length === 2 && monthIndex(row[0]) && amount(row[1]))) return false;
+        if (!data.salaryChanges.some(row => row[0] === 0) || new Set(data.salaryChanges.map(row => row[0])).size !== data.salaryChanges.length) return false;
+        if (!Array.isArray(data.corrections) || data.corrections.length > 24) return false;
+        if (!data.corrections.every(row => row && monthIndex(row.index) && date(row.date) && text(row.reason, 80) && (row.enteredNet == null || amount(row.enteredNet)))) return false;
+        if (new Set(data.corrections.map(row => row.index)).size !== data.corrections.length) return false;
+        const dates = initialPaychecks.map(pay => data.corrections.find(row => row.index === pay.index)?.date ?? pay.date);
+        if (dates.some((day, index) => index > 0 && day <= dates[index - 1])) return false;
+        if (!Array.isArray(data.bonuses) || data.bonuses.length > 1000) return false;
+        if (!data.bonuses.every(row => row && ['award', 'monthly', 'quarterly', 'annual', 'art32', 'holiday'].includes(row.type) && text(row.name, 100) && amount(row.amount) && row.amount > 0 && typeof row.optional === 'boolean' && (row.link == null ? date(row.date) : monthIndex(row.link)))) return false;
+        if (!Array.isArray(data.deductions) || data.deductions.length > 1000) return false;
+        if (!data.deductions.every(row => row && text(row.name, 54) && row.name.trim() && text(row.kind, 100) && amount(row.amount) && row.amount > 0 && typeof row.percent === 'boolean' && (!row.percent || row.amount <= 10000) && monthIndex(row.start) && monthIndex(row.end) && row.end >= row.start && text(row.endInput, 2) && (row.frequency === 'once' || row.endInput === '' || Number(row.endInput) === row.end) && ['monthly', 'annual', 'once'].includes(row.frequency) && row.interval === (row.frequency === 'annual' ? 12 : 1))) return false;
+        if (!data.config || !savedConfigKeys.every(key => config[key].type === 'checkbox' ? typeof data.config[key] === 'boolean' : text(data.config[key], 40))) return false;
+        if (!['start', 'end', 'kzp-start'].every(key => monthIndex(Number(data.config[key])))) return false;
+        if (Number(data.config.start) > Number(data.config.end) || !['both', 'salary', 'bonus'].includes(data.config.source)) return false;
+        if (!['initial', 'confirmed', 'floor', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate'].every(key => data.config[key] === '' || (Number.isFinite(Number(data.config[key])) && Number(data.config[key]) >= 0 && Number(data.config[key]) <= 10000000))) return false;
+        return true;
+      }
+
+      function applyStoredPlan(data) {
+        salaryChanges.clear();
+        for (const [index, gross] of data.salaryChanges) salaryChanges.set(index, gross);
+        let gross = 0;
+        for (const pay of paychecks) {
+          gross = salaryChanges.get(pay.index) ?? gross;
+          Object.assign(pay, initialPaychecks[pay.index], { gross });
+        }
+        for (const correction of data.corrections) {
+          Object.assign(paychecks[correction.index], { date: correction.date, reason: correction.reason, enteredNet: correction.enteredNet ?? null });
+        }
+        bonuses.splice(0, bonuses.length, ...data.bonuses);
+        deductions.splice(0, deductions.length, ...data.deductions);
+        for (const key of savedConfigKeys) {
+          if (config[key].type === 'checkbox') config[key].checked = data.config[key];
+          else config[key].value = data.config[key];
+        }
+        for (const goal of goals) goal.checked = goal.value === data.goal;
+        chosen = data.chosen;
+        config['pay-from'].value = '0';
+        config['pay-gross'].value = paychecks[0].gross / 100;
+      }
+
+      function loadPlan() {
+        try {
+          savedSnapshot = window.localStorage.getItem(storageKey);
+          if (savedSnapshot == null) return;
+          ui['storage-clear'].hidden = false;
+          const data = JSON.parse(savedSnapshot);
+          if (!validStoredPlan(data)) throw new Error('Invalid saved plan');
+          applyStoredPlan(data);
+          markEdited();
+          ui['storage-status'].textContent = 'Odtworzono zapisany plan z tego urządzenia.';
+        } catch {
+          storageBlocked = true;
+          ui['storage-status'].textContent = savedSnapshot == null ? 'Zapis na tym urządzeniu jest niedostępny. Wpisane dane pozostaną w tej karcie do jej zamknięcia.' : 'Zapisany plan jest nieczytelny. Możesz usunąć zapis i rozpocząć nowy plan.';
+          ui['storage-status'].className = 'pay-hint pay-danger';
+        }
+      }
+
+      function savePlan() {
+        if (storageBlocked) return;
+        try {
+          const current = window.localStorage.getItem(storageKey);
+          if (current !== savedSnapshot) {
+            storageBlocked = true;
+            ui['storage-status'].className = 'pay-hint pay-danger';
+            ui['storage-status'].textContent = 'Plan został zmieniony w innej karcie. Odśwież stronę, aby wczytać zapis.';
+            return;
+          }
+          const data = storedPlan();
+          if (!validStoredPlan(data)) {
+            ui['storage-status'].className = 'pay-hint pay-danger';
+            ui['storage-status'].textContent = 'Uzupełnij poprawne dane, aby zapisać ostatnią zmianę. Poprzedni zapis pozostaje dostępny.';
+            return;
+          }
+          const serialized = JSON.stringify(data);
+          if (serialized === savedSnapshot) return;
+          window.localStorage.setItem(storageKey, serialized);
+          savedSnapshot = serialized;
+          ui['storage-clear'].hidden = false;
+          ui['storage-status'].className = 'pay-hint';
+          ui['storage-status'].textContent = 'Zapisano plan na tym urządzeniu.';
+        } catch {
+          ui['storage-status'].className = 'pay-hint pay-danger';
+          ui['storage-status'].textContent = 'Nie udało się zapisać ostatniej zmiany. Zachowaj tę kartę otwartą.';
+        }
+      }
+
+      ui['storage-clear'].addEventListener('click', () => {
+        if (!window.confirm('Usunąć zapisany plan z tego urządzenia i wrócić do danych przykładowych?')) return;
+        try {
+          window.localStorage.removeItem(storageKey);
+          savedSnapshot = null;
+          storageBlocked = false;
+          applyStoredPlan({ salaryChanges: [[0, initialPaychecks[0].gross]], corrections: [], bonuses: [], deductions: [], config: initialConfig, goal: 'maximum', chosen: 5 });
+          for (const kind of ['bonus', 'deduction']) finishEdit(kind);
+          ui['demo-label'].textContent = 'Dane przykładowe';
+          ui['storage-clear'].hidden = true;
+          ui['storage-status'].className = 'pay-hint';
+          ui['storage-status'].textContent = 'Usunięto zapisany plan. Wyświetlono dane przykładowe.';
+          refresh(false);
+        } catch {
+          ui['storage-status'].textContent = 'Nie udało się usunąć zapisanego planu.';
+          ui['storage-status'].className = 'pay-hint pay-danger';
+        }
+      });
 
       const tabs = Array.from(settings.querySelectorAll('[role="tab"]'));
       function openTab(tab) {
@@ -727,7 +870,7 @@
       function collectPeriods(start, end) {
         const { pays, separate } = payrollTimeline();
         return pays.slice(start, end + 1).map(pay => {
-          const firstDate = pay.index === start ? pay.date.slice(0, 7) + '-01' : pay.date;
+          const firstDate = pay.index === start ? firstMonthDate(pay) : pay.date;
           const nextDate = pays[pay.index + 1]?.date ?? defaultPayDate(24);
           let earlier = 0;
           let sameDay = pay.bonusNet;
@@ -748,6 +891,10 @@
           }
           return { ...pay, earlier, sameDay, later, separateGross, separateContributions, separateTax, received: valid ? pay.salary + earlier + sameDay + later : null };
         });
+      }
+
+      function firstMonthDate(pay) {
+        return pay.year + '-' + String(pay.month + 1).padStart(2, '0') + '-01';
       }
 
       function simulate(periods, target, opening, floor, source) {
@@ -1020,7 +1167,7 @@
         config['deduction-kind'].value = entry.kind;
         config['deduction-name'].value = entry.kind === 'custom' ? entry.name : '';
         config['deduction-unit'].value = entry.percent ? 'percent' : 'amount';
-        config['deduction-value'].value = inZloty(entry.amount);
+        config['deduction-value'].value = entry.percent ? numberFormat.format(entry.amount / 100) : inZloty(entry.amount);
         config['deduction-frequency'].value = entry.frequency;
         config['deduction-start'].value = String(entry.start);
         config['deduction-end'].value = entry.endInput;
@@ -1058,7 +1205,7 @@
         finishEdit('deduction');
         markEdited();
         refresh();
-        feedback('deduction', (updating ? 'Zapisano zmianę' : 'Dodano do listy') + ' — ' + name + ', ' + (percent ? inZloty(amount) + '%' : money(amount)) + '.');
+        feedback('deduction', (updating ? 'Zapisano zmianę' : 'Dodano do listy') + ' — ' + name + ', ' + (percent ? formatPercent(amount) : money(amount)) + '.');
       });
 
       function renderList(kind, entries, label, edit) {
@@ -1157,12 +1304,12 @@
         ui['table-foot'].replaceChildren(totalRow);
         const earlyIncome = plan.periods[0].earlier;
         fields['early-income'].hidden = !earlyIncome;
-        fields['early-income'].textContent = earlyIncome ? 'Pierwszy wiersz obejmuje także ' + money(earlyIncome) + ' premii netto otrzymanych przed pierwszą pensją. Rezerwa początkowa oznacza saldo na ' + shortDate(plan.periods[0].date.slice(0, 7) + '-01') + ', przed tymi wpływami.' : '';
+        fields['early-income'].textContent = earlyIncome ? 'Pierwszy wiersz obejmuje także ' + money(earlyIncome) + ' premii netto otrzymanych przed pierwszą pensją. Rezerwa początkowa oznacza saldo na ' + shortDate(firstMonthDate(plan.periods[0])) + ', przed tymi wpływami.' : '';
         fields.outside.hidden = !plan.projection || !!plan.projection.failure || !plan.projection.outside;
         fields.outside.textContent = fields.outside.hidden ? '' : 'Środki poza wyrównywaniem w tym planie — ' + money(plan.projection.outside) + '.';
       }
 
-      function selectMonth(index) {
+      function selectMonth(index, persist = true) {
         chosen = index;
         const row = plan.periods.find(pay => pay.index === index);
         if (displayedYear !== row.year) renderChart();
@@ -1204,9 +1351,10 @@
           if (item.matches('tr')) item.querySelector('button').setAttribute('aria-current', String(selected));
         }
         populatePaycheck();
+        if (persist) savePlan();
       }
 
-      function refresh() {
+      function refresh(persist = true) {
         plan = calculatePlan();
         const first = plan.periods[0];
         const last = plan.periods.at(-1);
@@ -1234,11 +1382,12 @@
 
         renderChart();
         renderTable();
-        selectMonth(chosen);
+        selectMonth(chosen, false);
         renderList('bonus', bonuses, bonus => bonus.name + ' · ' + money(bonus.amount) + ' brutto · ' + shortDate(bonus.link == null ? bonus.date : paychecks[bonus.link].date) + (bonus.optional ? ' · niepewna' : ''), startBonusEdit);
-        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? inZloty(deduction.amount) + '%' : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + paychecks[deduction.start].label + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + paychecks[deduction.end].label : ''), startDeductionEdit);
+        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? formatPercent(deduction.amount) : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + paychecks[deduction.start].label + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + paychecks[deduction.end].label : ''), startDeductionEdit);
         ui['bonus-empty'].hidden = bonuses.length > 0;
         ui['deduction-empty'].hidden = deductions.length > 0;
+        if (persist) savePlan();
       }
 
       config.start.addEventListener('change', () => {
@@ -1254,10 +1403,13 @@
       }
       for (const goal of goals) goal.addEventListener('change', refresh);
       config.manual.addEventListener('input', refresh);
-      monthPicker.addEventListener('change', () => selectMonth(Number(monthPicker.value)));
+      monthPicker.addEventListener('change', () => {
+        selectMonth(Number(monthPicker.value));
+      });
       showBonusFields(true);
       showDeductionFields();
-      refresh();
+      loadPlan();
+      refresh(false);
     })();
   </script>
 </div>
