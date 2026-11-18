@@ -37,13 +37,13 @@ function subject(overrides = {}) {
   context.config['tax-2027'] ??= { value: 'current' };
   const originalValue = context.value;
   context.value = key => key === 'tax-2027' ? context.config[key].value : originalValue(key);
-  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty', 'taxScales'];
+  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty', 'taxScales', 'monthGenitives'];
   const declarations = constants.map(name => {
     const match = source.match(new RegExp('^      const ' + name + ' = .+;$', 'm'));
     assert.ok(match, 'Missing constant ' + name);
     return match[0];
   });
-  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'taxForScale', 'tax2027Description', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
+  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'taxForScale', 'tax2027Description', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage', 'monthWithYear', 'availableBonusPeriods', 'chartYears', 'populatePaycheck', 'enteredAmount'];
   const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money, formatPercent };'].join('\n');
   vm.runInNewContext(code, context);
   return { ...context.subject, context };
@@ -504,4 +504,59 @@ test('unknown or malformed presets remain unreadable and are never silently repl
     assert.match(restored.context.ui['storage-status'].textContent, /nieczytelny/);
     assert.equal([...storage.values()][0], serialized);
   }
+});
+
+test('month names after od and do use the Polish genitive with the correct year', () => {
+  const app = subject();
+  const months = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  for (const [month, name] of months.entries()) {
+    assert.equal(app.monthWithYear(app.context.paychecks[month]), name + ' 2026');
+    assert.equal(app.monthWithYear(app.context.paychecks[month + 12]), name + ' 2027');
+  }
+});
+
+test('monthly bonus choices keep December 2025 and stop before the unpayable December 2027', () => {
+  const app = subject();
+  const options = app.availableBonusPeriods('monthly');
+  assert.deepEqual(Array.from(options, row => row[0]), Array.from({ length: 24 }, (_, index) => index));
+  assert.equal(options[0][1], 'Grudzień 2025');
+  assert.equal(options.at(-1)[1], app.context.paychecks[22].label);
+});
+
+test('quarterly bonus choices retain IV 2025 and exclude IV 2027 paid after the supported years', () => {
+  const app = subject();
+  const options = app.availableBonusPeriods('quarterly');
+  assert.deepEqual(Array.from(options, row => row[0]), [1, 4, 7, 10, 13, 16, 19, 22]);
+  assert.equal(options[0][1], 'IV kwartał 2025');
+  assert.equal(options.at(-1)[1], 'III kwartał 2027');
+});
+
+test('editing a confirmed transfer displays Polish money and saves the same cents', () => {
+  const app = subject();
+  app.context.chosen = 0;
+  app.context.paychecks[0].enteredNet = 854632;
+  app.context.ui = { 'payroll-month': {}, 'correction-feedback': {} };
+  for (const key of ['pay-date', 'pay-reason', 'pay-net']) app.context.config[key] = {};
+  app.context.showCorrectionFields = () => {};
+  app.populatePaycheck();
+  const displayed = app.context.config['pay-net'].value;
+  assert.equal(displayed.replace(/\s/g, ' '), '8 546,32');
+  app.context.value = key => app.context.config[key].value;
+  assert.equal(app.enteredAmount('pay-net'), 854632);
+});
+
+test('chart year bands cover every month of full and partial multi-year plans', () => {
+  const app = subject();
+  const normalize = value => JSON.parse(JSON.stringify(value));
+  assert.deepEqual(normalize(app.chartYears(app.context.paychecks)), [
+    { year: 2026, start: 0, count: 12 },
+    { year: 2027, start: 12, count: 12 },
+  ]);
+  assert.deepEqual(normalize(app.chartYears(app.context.paychecks.slice(10, 14))), [
+    { year: 2026, start: 0, count: 2 },
+    { year: 2027, start: 2, count: 2 },
+  ]);
+  assert.deepEqual(normalize(app.chartYears(app.context.paychecks.slice(12, 13))), [
+    { year: 2027, start: 0, count: 1 },
+  ]);
 });
