@@ -16,7 +16,7 @@ function pageFunction(name) {
 function subject(overrides = {}) {
   const context = {
     config: { optional: { checked: true }, 'kzp-enabled': { checked: false } },
-    goals: [{ checked: true, value: 'maximum' }],
+    goals: ['maximum', 'manual', 'off'].map(value => ({ checked: value === 'maximum', value })),
     bonuses: [],
     paychecks: Array.from({ length: 24 }, (_, index) => ({
       index,
@@ -34,14 +34,14 @@ function subject(overrides = {}) {
     ...overrides,
   };
   for (const key of ['initial', 'confirmed', 'floor']) context.config[key] = { checkValidity: () => true };
-  const constants = ['amountFormat', 'inZloty', 'money', 'pensionLimits', 'roundRate', 'wholeZloty'];
+  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty'];
   const declarations = constants.map(name => {
     const match = source.match(new RegExp('^      const ' + name + ' = .+;$', 'm'));
     assert.ok(match, 'Missing constant ' + name);
     return match[0];
   });
-  const functions = ['defaultPayDate', 'progressiveTax', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
-  const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money };'].join('\n');
+  const functions = ['defaultPayDate', 'firstMonthDate', 'progressiveTax', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
+  const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money, formatPercent };'].join('\n');
   vm.runInNewContext(code, context);
   return { ...context.subject, context };
 }
@@ -122,4 +122,117 @@ test('excess deductions describe negative net without claiming to exceed gross',
   assert.match(result.error, /kwota do wypłaty jest ujemna/);
   assert.doesNotMatch(result.error, /przekraczają kwotę brutto/);
   assert.equal(result.target, null);
+});
+
+test('percentages retain precision without monetary trailing zeroes', () => {
+  const app = subject();
+  assert.equal(app.formatPercent(200), '2%');
+  assert.equal(app.formatPercent(250), '2,5%');
+  assert.equal(app.formatPercent(225), '2,25%');
+});
+
+test('moving the first salary into March preserves a bonus paid in February', () => {
+  const app = subject();
+  app.context.paychecks[1].date = '2026-03-02';
+  app.context.bonuses.push({ amount: 500000, date: '2026-02-10', link: null, optional: false });
+  const periods = app.collectPeriods(1, 11);
+  const bonus = app.payrollTimeline().separate[0];
+  assert.equal(app.firstMonthDate(periods[0]), '2026-02-01');
+  assert.equal(periods[0].earlier, bonus.amount);
+  assert.equal(periods[0].received, periods[0].salary + bonus.amount);
+  for (const mode of ['salary', 'bonus', 'both']) {
+    const result = app.simulate(periods, 0, 0, 0, mode);
+    assert.equal(result.failure, null);
+    assert.equal(result.closing + result.outside, periods.reduce((sum, row) => sum + row.received, 0));
+  }
+});
+
+function storageSubject(storage = new Map(), failWrites = false) {
+  const app = subject();
+  const context = app.context;
+  for (const pay of context.paychecks) {
+    pay.date = app.defaultPayDate(pay.index);
+    pay.reason = '';
+  }
+  context.initialPaychecks = context.paychecks.map(pay => ({ ...pay }));
+  const values = {
+    start: '0', end: '11', source: 'both', initial: '0', confirmed: '', floor: '', manual: '', optional: true,
+    'kzp-enabled': false, 'kzp-start': '0', 'kzp-savings': '200', 'kzp-initial': '0', 'kzp-debt': '0', 'kzp-rate': '0',
+    'pay-from': '0', 'pay-gross': '14500',
+  };
+  context.config = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === 'boolean' ? { type: 'checkbox', checked: value } : { value }]));
+  context.salaryChanges = new Map([[0, 1450000]]);
+  context.deductions = [];
+  context.chosen = 5;
+  context.ui = { 'storage-status': {}, 'storage-clear': { hidden: true } };
+  context.markEdited = () => {};
+  context.window = { localStorage: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => {
+      if (failWrites) throw new Error('Storage unavailable');
+      storage.set(key, value);
+    },
+  } };
+  const declarations = ['storageKey', 'savedConfigKeys'].map(name => source.match(new RegExp('^      const ' + name + ' = .+;$', 'm'))[0]);
+  const functions = ['storedPlan', 'validStoredPlan', 'applyStoredPlan', 'loadPlan', 'savePlan'];
+  vm.runInContext([...declarations, 'let savedSnapshot = null; let storageBlocked = false;', ...functions.map(pageFunction), 'globalThis.storageSubject = { ' + functions.join(', ') + ' };'].join('\n'), context);
+  return { ...context.storageSubject, context, storage };
+}
+
+test('salary history, bonuses, deductions, corrections and plan settings survive reload', () => {
+  const app = storageSubject();
+  app.context.salaryChanges.set(8, 1700000);
+  app.context.paychecks[1].date = '2026-03-02';
+  app.context.paychecks[1].reason = 'Termin potwierdzony';
+  app.context.paychecks[1].enteredNet = 777777;
+  app.context.bonuses.push({ type: 'quarterly', name: 'Premia kwartalna', amount: 123456, link: 4, date: '2026-06-21', optional: true });
+  app.context.deductions.push({ kind: 'custom', name: 'Składka', amount: 250, percent: true, start: 0, end: 23, endInput: '', frequency: 'annual', interval: 12 });
+  app.context.config.start.value = '1';
+  app.context.config.end.value = '15';
+  app.context.config.manual.value = '9 000,50';
+  app.context.config['kzp-enabled'].checked = true;
+  app.context.config['kzp-debt'].value = '1200';
+  app.context.config['kzp-rate'].value = '200';
+  for (const goal of app.context.goals) goal.checked = goal.value === 'manual';
+  app.context.chosen = 4;
+  app.savePlan();
+  assert.equal(app.storage.size, 1);
+  const saved = JSON.parse([...app.storage.values()][0]);
+  assert.equal(app.validStoredPlan(saved), true);
+  const restored = storageSubject(app.storage);
+  restored.loadPlan();
+  assert.equal(JSON.stringify(restored.storedPlan()), JSON.stringify(saved));
+  assert.equal(restored.context.paychecks[7].gross, 1450000);
+  assert.equal(restored.context.paychecks[8].gross, 1700000);
+  assert.match(restored.context.ui['storage-status'].textContent, /Odtworzono/);
+});
+
+test('corrupt saved data stays intact instead of being replaced with sample data', () => {
+  const storage = new Map([['kalkulator-wyplat.plan.v1', '{broken']]);
+  const app = storageSubject(storage);
+  app.loadPlan();
+  app.savePlan();
+  assert.equal(storage.get('kalkulator-wyplat.plan.v1'), '{broken');
+  assert.match(app.context.ui['storage-status'].textContent, /nieczytelny/);
+});
+
+test('a write failure reports unsaved changes', () => {
+  const app = storageSubject(new Map(), true);
+  app.savePlan();
+  assert.equal(app.storage.size, 0);
+  assert.match(app.context.ui['storage-status'].textContent, /Nie udało się zapisać/);
+});
+
+test('a second tab cannot silently overwrite a newer saved plan', () => {
+  const first = storageSubject();
+  first.savePlan();
+  const second = storageSubject(first.storage);
+  second.loadPlan();
+  first.context.config.initial.value = '1500';
+  first.savePlan();
+  const newer = [...first.storage.values()][0];
+  second.context.config.initial.value = '1000';
+  second.savePlan();
+  assert.equal([...first.storage.values()][0], newer);
+  assert.match(second.context.ui['storage-status'].textContent, /innej karcie/);
 });
