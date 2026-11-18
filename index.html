@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.4.1">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -307,8 +307,8 @@
           <label class="pay-field">Pierwsza pensja w planie<select data-config="start"></select></label>
           <label class="pay-field">Ostatnia pensja w planie<select data-config="end"></select></label>
           <label class="pay-field">Co zasila rezerwę?<select data-config="source"><option value="both">Nadwyżki z pensji oraz premie</option><option value="salary">Nadwyżki z pensji</option><option value="bonus">Premie i dodatki</option></select></label>
-          <label class="pay-field">Planowana rezerwa przed pierwszą pensją (zł)<input type="number" min="0" max="10000000" step="0.01" value="0" data-config="initial"></label>
-          <label class="pay-field">Potwierdzona rezerwa przed pierwszą pensją (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Wpisz, jeśli znasz" data-config="confirmed"></label>
+          <label class="pay-field">Planowana rezerwa na początek pierwszego miesiąca (zł)<input type="number" min="0" max="10000000" step="0.01" value="0" data-config="initial"></label>
+          <label class="pay-field">Potwierdzona rezerwa na początek pierwszego miesiąca (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Wpisz, jeśli znasz" data-config="confirmed"></label>
           <label class="pay-field">Wymagana rezerwa na koniec (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Jak na początku planu" data-config="floor"></label>
           <label class="pay-check"><input type="checkbox" data-config="optional" checked> Uwzględnij opcjonalne wypłaty</label>
         </div>
@@ -473,6 +473,7 @@
         </table>
       </div>
       <p class="pay-hint" data-pay="outside" hidden style="margin-bottom: 10px"></p>
+      <p class="pay-hint" data-pay="early-income" hidden style="margin-bottom: 10px"></p>
     </section>
 
     <p class="pay-visually-hidden" data-pay="live" aria-live="polite" aria-atomic="true"></p>
@@ -494,7 +495,8 @@
       const settings = root.querySelector('#payday-v4-settings');
       const monthNames = Array.from(monthPicker.options, option => option.textContent);
       const monthLabels = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
-      const amountFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', maximumFractionDigits: 2 });
+      const amountFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const numberFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', maximumFractionDigits: 2 });
       const dateFormat = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeZone: 'UTC' });
       const inZloty = cents => amountFormat.format(cents / 100);
       const money = cents => cents == null ? '—' : inZloty(cents) + ' zł';
@@ -725,7 +727,9 @@
       function collectPeriods(start, end) {
         const { pays, separate } = payrollTimeline();
         return pays.slice(start, end + 1).map(pay => {
+          const firstDate = pay.index === start ? pay.date.slice(0, 7) + '-01' : pay.date;
           const nextDate = pays[pay.index + 1]?.date ?? defaultPayDate(24);
+          let earlier = 0;
           let sameDay = pay.bonusNet;
           let later = 0;
           let separateGross = 0;
@@ -733,15 +737,16 @@
           let separateTax = 0;
           let valid = pay.salary >= 0;
           for (const bonus of separate) {
-            if (bonus.date < pay.date || bonus.date >= nextDate) continue;
-            if (bonus.date === pay.date) sameDay += bonus.amount;
+            if (bonus.date < firstDate || bonus.date >= nextDate) continue;
+            if (bonus.date < pay.date) earlier += bonus.amount;
+            else if (bonus.date === pay.date) sameDay += bonus.amount;
             else later += bonus.amount;
             if (bonus.amount < 0) valid = false;
             separateGross += bonus.gross;
             separateContributions += bonus.contributions;
             separateTax += bonus.tax;
           }
-          return { ...pay, sameDay, later, separateGross, separateContributions, separateTax, received: valid ? pay.salary + sameDay + later : null };
+          return { ...pay, earlier, sameDay, later, separateGross, separateContributions, separateTax, received: valid ? pay.salary + earlier + sameDay + later : null };
         });
       }
 
@@ -753,18 +758,17 @@
         let outside = 0;
         for (const row of periods) {
           const starting = reserve;
-          if (saveBonuses) reserve += row.sameDay;
-          else outside += row.sameDay + row.later;
-          const before = reserve;
+          if (saveBonuses) reserve += row.earlier + row.sameDay;
+          else outside += row.earlier + row.sameDay + row.later;
           const difference = row.salary - target;
-          if (difference < 0 && before < -difference) {
-            return { balances, failure: { index: row.index, shortfall: -difference - before }, outside };
+          if (difference < 0 && reserve < -difference) {
+            return { balances, failure: { index: row.index, shortfall: -difference - reserve }, outside };
           }
           if (saveSalary || difference < 0) reserve += difference;
           else outside += difference;
           const after = reserve;
           if (saveBonuses) reserve += row.later;
-          balances.set(row.index, { before, after, atEnd: reserve, atPayday: after - starting, forPeriod: reserve - starting });
+          balances.set(row.index, { before: starting, after, atEnd: reserve, atPayday: after - starting, forPeriod: reserve - starting });
         }
         return { balances, failure: reserve < floor ? { index: null, shortfall: floor - reserve } : null, outside, closing: reserve, opening };
       }
@@ -780,7 +784,7 @@
         }
         const invalid = periods.find(row => row.received == null);
         if (invalid) {
-          result.error = invalid.label + ' — potrącenia przekraczają kwotę brutto. Sprawdź pozycje z listy płac.';
+          result.error = invalid.label + ' — po odliczeniu podatku, składek i potrąceń kwota do wypłaty jest ujemna. Sprawdź kwoty potrąceń i składników wypłaty.';
           return result;
         }
         if (result.mode === 'off') return result;
@@ -1091,8 +1095,8 @@
         fields['chart-title'].textContent = 'Wypłaty w ' + displayedYear + ' r.';
         const subset = plan.periods.filter(row => row.year === displayedYear);
         const ceiling = Math.max(200000, Math.ceil(Math.max(plan.target ?? 0, ...subset.map(row => row.received ?? 0)) / 200000) * 200000);
-        fields['axis-top'].textContent = inZloty(ceiling / 1000) + ' tys. zł';
-        fields['axis-mid'].textContent = inZloty(ceiling / 2000) + ' tys. zł';
+        fields['axis-top'].textContent = numberFormat.format(ceiling / 100000) + ' tys. zł';
+        fields['axis-mid'].textContent = numberFormat.format(ceiling / 200000) + ' tys. zł';
         plot.style.setProperty('--target-height', `${(plan.target ?? 0) / ceiling * 100}%`);
         bars.style.gridTemplateColumns = ticks.style.gridTemplateColumns = 'repeat(' + subset.length + ', minmax(0, 1fr))';
         bars.replaceChildren();
@@ -1151,6 +1155,9 @@
           totalRow.append(displayedMoney(closed ? plan.target * plan.periods.length : null), create('td', delta(change)), displayedMoney(projection?.closing));
         }
         ui['table-foot'].replaceChildren(totalRow);
+        const earlyIncome = plan.periods[0].earlier;
+        fields['early-income'].hidden = !earlyIncome;
+        fields['early-income'].textContent = earlyIncome ? 'Pierwszy wiersz obejmuje także ' + money(earlyIncome) + ' premii netto otrzymanych przed pierwszą pensją. Rezerwa początkowa oznacza saldo na ' + shortDate(plan.periods[0].date.slice(0, 7) + '-01') + ', przed tymi wpływami.' : '';
         fields.outside.hidden = !plan.projection || !!plan.projection.failure || !plan.projection.outside;
         fields.outside.textContent = fields.outside.hidden ? '' : 'Środki poza wyrównywaniem w tym planie — ' + money(plan.projection.outside) + '.';
       }
@@ -1164,7 +1171,7 @@
         ui['net-unit'].hidden = row.received == null;
         const actual = row.enteredNet != null;
         const separate = row.separateGross > 0;
-        const bonusNet = row.sameDay + row.later - (actual ? row.bonusNet : 0);
+        const bonusNet = row.earlier + row.sameDay + row.later - (actual ? row.bonusNet : 0);
         const bonusGross = row.separateGross + row.bonusGross;
         fields['net-title'].textContent = actual && !separate ? 'Wpłynęło na konto' : 'Wpłynie na konto';
         fields['net-note'].textContent = actual && !separate ? 'Potwierdzona kwota przelewu' : bonusGross ? 'Pensja i dodatki do dnia przed kolejną pensją' : 'Szacunek po składkach, podatku i potrąceniach';
