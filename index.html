@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.6.1">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.7.0">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -400,6 +400,35 @@
         <p class="pay-hint" data-ui="deduction-empty">Tu pojawią się dodane pozycje.</p>
         <ul class="pay-form-list" data-ui="deduction-list" aria-label="Dodane potrącenia"></ul>
         <details class="pay-subsettings">
+          <summary>Pracownicze Plany Kapitałowe (PPK)</summary>
+          <div class="pay-form-grid">
+            <label class="pay-check"><input type="checkbox" data-config="ppk-enabled"> Uwzględnij PPK</label>
+            <label class="pay-field">PPK od miesiąca wypłaty<select data-config="ppk-start"></select></label>
+            <label class="pay-field">PPK do miesiąca wypłaty<select data-config="ppk-end"></select></label>
+            <label class="pay-field">Dodatkowa wpłata pracownika PPK (%)<input type="number" min="0" max="2" step="0.01" value="0" data-config="ppk-extra-employee"><span class="pay-field-note">Ponad podstawowe 2%. Razem od 2% do 4%.</span></label>
+            <label class="pay-field">Dodatkowa wpłata pracodawcy PPK (%)<input type="number" min="0" max="2.5" step="0.01" value="0" data-config="ppk-extra-employer"><span class="pay-field-note">Ponad podstawowe 1,5%. Razem od 1,5% do 4%.</span></label>
+            <label class="pay-field">Wpłatę firmy do PPK rozlicz w PIT<select data-config="ppk-timing"><option value="same">W tym samym miesiącu</option><option value="next">W następnym miesiącu</option></select></label>
+            <label class="pay-field" data-ui="ppk-opening-field" hidden>Wpłata firmy do PPK z 2025 r. do rozliczenia w styczniu 2026 (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Podaj kwotę, także 0" data-config="ppk-opening"></label>
+          </div>
+          <p class="pay-hint" data-ui="ppk-status"></p>
+        </details>
+        <details class="pay-subsettings">
+          <summary>Pracowniczy Program Emerytalny (PPE)</summary>
+          <div class="pay-form-grid">
+            <label class="pay-check"><input type="checkbox" data-config="ppe-enabled"> Uwzględnij PPE</label>
+            <label class="pay-field">PPE od miesiąca wypłaty<select data-config="ppe-start"></select></label>
+            <label class="pay-field">PPE do miesiąca wypłaty<select data-config="ppe-end"></select></label>
+            <label class="pay-field">Twoją wpłatę PPE określ jako<select data-config="ppe-employee-unit"><option value="amount">Kwotę miesięczną</option><option value="percent">Procent podstawy PPE</option></select></label>
+            <label class="pay-field"><span data-ui="ppe-employee-label">Twoja miesięczna wpłata PPE (zł)</span><input type="number" min="0" max="10000000" step="0.01" value="0" data-config="ppe-employee"></label>
+            <label class="pay-field">Wpłatę firmy PPE określ jako<select data-config="ppe-employer-unit"><option value="percent">Procent podstawy PPE</option><option value="amount">Kwotę miesięczną</option></select></label>
+            <label class="pay-field"><span data-ui="ppe-employer-label">Wpłata pracodawcy PPE (%)</span><input type="number" min="0" max="10000000" step="0.01" placeholder="Wpisz wartość z zasad programu" data-config="ppe-employer"></label>
+            <label class="pay-field">Wpłatę firmy do PPE rozlicz w PIT<select data-config="ppe-timing"><option value="same">W tym samym miesiącu</option><option value="next">W następnym miesiącu</option></select></label>
+            <label class="pay-field" data-ui="ppe-opening-field" hidden>Wpłata firmy do PPE z 2025 r. do rozliczenia w styczniu 2026 (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Podaj kwotę, także 0" data-config="ppe-opening"></label>
+          </div>
+          <p class="pay-hint" data-ui="ppe-status"></p>
+        </details>
+        <p class="pay-hint" data-ui="pension-assumption" hidden>Podstawa PPK/PPE obejmuje pensję i premie objęte składkami w tym kalkulatorze, bez ograniczenia do 30-krotności. Wpłaty firmy zwiększają tylko przychód PIT. Symulacja zakłada przekazanie wpłaty firmy przed pensją rozliczającą podatek w wybranym miesiącu. PPK obsługuje standardową wpłatę podstawową pracownika 2%.</p>
+        <details class="pay-subsettings">
           <summary>Kasa zapomogowo-pożyczkowa (KZP)</summary>
           <div class="pay-form-grid">
             <label class="pay-check"><input type="checkbox" data-config="kzp-enabled"> Uwzględnij potrącenia KZP</label>
@@ -441,6 +470,8 @@
             <div class="pay-row"><dt>Składki społeczne i zdrowotna</dt><dd data-pay="contributions">—</dd></div>
             <div class="pay-row"><dt>Zaliczka PIT</dt><dd data-pay="tax">—</dd></div>
             <div class="pay-row"><dt>Pozostałe potrącenia</dt><dd data-pay="deductions">—</dd></div>
+            <div class="pay-row" data-ui="pension-own-row" hidden><dt>W tym Twoje wpłaty PPK/PPE</dt><dd data-pay="pension-own">—</dd></div>
+            <div class="pay-row" data-ui="pension-employer-row" hidden><dt>Wpłaty firmy uwzględnione w PIT (bez gotówki)</dt><dd data-pay="pension-employer">—</dd></div>
           </dl>
           <dl data-ui="breakdown-cash" hidden><div class="pay-row"><dt>Potwierdzony przelew z pensją</dt><dd data-pay="salary-cash">—</dd></div></dl>
           <dl data-ui="breakdown-bonus" hidden><div class="pay-row"><dt>Premie i nagrody netto</dt><dd data-pay="bonus-cash">—</dd></div></dl>
@@ -448,7 +479,8 @@
         <details class="pay-breakdown">
           <summary>Założenia szacunku</summary>
           <p class="pay-hint" style="margin-top: 7px" data-pay="tax-assumptions"></p>
-          <p class="pay-hint" style="margin-top: 6px">Ulgi indywidualne i wpłaty pracodawcy na PPK lub PPE mogą zmienić wynik.</p>
+          <p class="pay-hint" style="margin-top: 6px" data-pay="pension-note" hidden></p>
+          <p class="pay-hint" style="margin-top: 6px">Ulgi indywidualne i obniżona wpłata podstawowa PPK wymagają odrębnego rozliczenia.</p>
         </details>
       </section>
       <section class="pay-panel pay-metric pay-equalized" data-ui="target-card" aria-labelledby="payday-v4-target-title">
@@ -594,7 +626,8 @@
       const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
       const storageKey = 'kalkulator-wyplat.plan.v1';
       const initialPaychecks = paychecks.map(pay => ({ ...pay }));
-      const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027'];
+      const pensionDefaults = { 'ppk-enabled': false, 'ppk-start': '0', 'ppk-end': '23', 'ppk-extra-employee': '0', 'ppk-extra-employer': '0', 'ppk-timing': 'same', 'ppk-opening': '', 'ppe-enabled': false, 'ppe-start': '0', 'ppe-end': '23', 'ppe-employee-unit': 'amount', 'ppe-employee': '0', 'ppe-employer-unit': 'percent', 'ppe-employer': '', 'ppe-timing': 'same', 'ppe-opening': '' };
+      const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027', ...Object.keys(pensionDefaults)];
       let savedSnapshot = null;
       let storageBlocked = false;
       let hasUserPlan = false;
@@ -617,6 +650,11 @@
       const monthOptions = paychecks.map(pay => [pay.index, pay.label]);
       for (const name of ['start', 'end', 'pay-from', 'bonus-salary', 'deduction-start', 'kzp-start']) options(config[name], monthOptions);
       options(config['deduction-end'], [['', 'Bez daty końcowej'], ...monthOptions]);
+      for (const kind of ['ppk', 'ppe']) {
+        options(config[kind + '-start'], [['-1', 'Program trwał już przed 2026 r.'], ...monthOptions]);
+        options(config[kind + '-end'], monthOptions);
+        config[kind + '-end'].value = '23';
+      }
       config.end.value = '11';
       config['bonus-salary'].value = '5';
       const initialConfig = Object.fromEntries(savedConfigKeys.map(key => [key, config[key].type === 'checkbox' ? config[key].checked : config[key].value]));
@@ -656,7 +694,10 @@
         if (!data.bonuses.every(row => row && ['award', 'monthly', 'quarterly', 'annual', 'art32', 'holiday'].includes(row.type) && text(row.name, 100) && amount(row.amount) && row.amount > 0 && typeof row.optional === 'boolean' && (row.link == null ? date(row.date) : monthIndex(row.link)))) return false;
         if (!Array.isArray(data.deductions) || data.deductions.length > 1000) return false;
         if (!data.deductions.every(row => row && text(row.name, 54) && row.name.trim() && text(row.kind, 100) && amount(row.amount) && row.amount > 0 && typeof row.percent === 'boolean' && (!row.percent || row.amount <= 10000) && monthIndex(row.start) && monthIndex(row.end) && row.end >= row.start && text(row.endInput, 2) && (row.frequency === 'once' || row.endInput === '' || Number(row.endInput) === row.end) && ['monthly', 'annual', 'once'].includes(row.frequency) && row.interval === (row.frequency === 'annual' ? 12 : 1))) return false;
-        if (!data.config || !savedConfigKeys.every(key => key === 'tax-2027' && data.config[key] === undefined ? true : config[key].type === 'checkbox' ? typeof data.config[key] === 'boolean' : text(data.config[key], 40))) return false;
+        const hasPension = data.config && Object.keys(pensionDefaults).some(key => Object.hasOwn(data.config, key));
+        if (hasPension && !Object.keys(pensionDefaults).every(key => Object.hasOwn(data.config, key))) return false;
+        if (!data.config || !savedConfigKeys.every(key => (key === 'tax-2027' || Object.hasOwn(pensionDefaults, key)) && data.config[key] === undefined ? true : config[key].type === 'checkbox' ? typeof data.config[key] === 'boolean' : text(data.config[key], 40))) return false;
+        if (hasPension && pensionInputError({ ...pensionDefaults, ...data.config })) return false;
         if (data.config['tax-2027'] !== undefined && !['current', 'draft3293'].includes(data.config['tax-2027'])) return false;
         if (!['start', 'end', 'kzp-start'].every(key => monthIndex(Number(data.config[key])))) return false;
         if (Number(data.config.start) > Number(data.config.end) || !['both', 'salary', 'bonus'].includes(data.config.source)) return false;
@@ -679,8 +720,9 @@
         bonuses.splice(0, bonuses.length, ...data.bonuses);
         deductions.splice(0, deductions.length, ...data.deductions);
         for (const key of savedConfigKeys) {
-          if (config[key].type === 'checkbox') config[key].checked = data.config[key];
-          else config[key].value = key === 'tax-2027' && data.config[key] === undefined ? 'current' : data.config[key];
+          const restored = data.config[key] === undefined ? key === 'tax-2027' ? 'current' : pensionDefaults[key] : data.config[key];
+          if (config[key].type === 'checkbox') config[key].checked = restored;
+          else config[key].value = restored;
         }
         for (const goal of goals) goal.checked = goal.value === data.goal;
         chosen = data.chosen;
@@ -718,8 +760,8 @@
           const data = storedPlan();
           if (!validStoredPlan(data)) {
             ui['storage-status'].className = 'pay-hint pay-danger';
-            const kzpIssue = kzpInputError();
-            ui['storage-status'].textContent = (kzpIssue ? kzpIssue.message : 'Uzupełnij poprawne dane, aby zapisać ostatnią zmianę.') + ' Poprzedni zapis pozostaje dostępny.';
+            const issue = pensionInputError() ?? kzpInputError();
+            ui['storage-status'].textContent = (issue ? issue.message : 'Uzupełnij poprawne dane, aby zapisać ostatnią zmianę.') + ' Poprzedni zapis pozostaje dostępny.';
             return;
           }
           const serialized = JSON.stringify(data);
@@ -784,6 +826,145 @@
         ui['settings-toggle'].focus();
       });
 
+      function pensionConfig() {
+        return Object.fromEntries(Object.entries(pensionDefaults).map(([key, fallback]) => [key, config[key] == null ? fallback : typeof fallback === 'boolean' ? config[key].checked : config[key].value]));
+      }
+
+      function pensionNumber(data, key) {
+        const raw = String(data[key] ?? '').trim();
+        if (!/^\d+(?:[.,]\d{0,2})?$/.test(raw)) return null;
+        const amount = Number(raw.replace(',', '.'));
+        return Number.isFinite(amount) ? Math.round(amount * 100) : null;
+      }
+
+      function pensionInputError(data = pensionConfig()) {
+        for (const kind of ['ppk', 'ppe']) {
+          const title = kind.toUpperCase();
+          const problem = (field, message) => ({ key: kind + '-' + field, message: title + ' — ' + message });
+          const start = Number(data[kind + '-start']);
+          const end = Number(data[kind + '-end']);
+          if (!Number.isInteger(start) || start < -1 || start > 23 || !Number.isInteger(end) || end < 0 || end > 23 || end < start) return problem('start', 'sprawdź pierwszy i ostatni miesiąc programu.');
+          if (!['same', 'next'].includes(data[kind + '-timing'])) return problem('timing', 'wybierz miesiąc rozliczenia wpłaty firmy.');
+          if (kind === 'ppe' && !['employee', 'employer'].every(party => ['amount', 'percent'].includes(data['ppe-' + party + '-unit']))) return problem('employer-unit', 'wybierz sposób określenia wpłaty.');
+          if (!data[kind + '-enabled']) continue;
+          const specs = kind === 'ppk'
+            ? [['extra-employee', 200, 'dodatkowa wpłata pracownika musi wynosić od 0% do 2%.'], ['extra-employer', 250, 'dodatkowa wpłata pracodawcy musi wynosić od 0% do 2,5%.']]
+            : [['employee', data['ppe-employee-unit'] === 'percent' ? 10000 : 1000000000, 'podaj własną wpłatę, także 0.'], ['employer', data['ppe-employer-unit'] === 'percent' ? 700 : 1000000000, 'podaj wpłatę pracodawcy; stawka nie może przekraczać 7%.']];
+          for (const [field, max, message] of specs) {
+            const amount = pensionNumber(data, kind + '-' + field);
+            if (amount == null || amount < 0 || amount > max) return problem(field, message);
+          }
+          if (start === -1 && data[kind + '-timing'] === 'next') {
+            const opening = pensionNumber(data, kind + '-opening');
+            if (opening == null || opening > 1000000000) return problem('opening', 'podaj wpłatę firmy z 2025 r. rozliczaną w styczniu 2026, także 0.');
+          }
+        }
+        return null;
+      }
+
+      function pensionDeductionKind(deduction) {
+        const label = String(deduction.kind === 'custom' ? deduction.name : deduction.kind).trim().toLowerCase();
+        return label === 'ppk pracownika' ? 'ppk' : label === 'ppe pracownika' ? 'ppe' : '';
+      }
+
+      function pensionActive(kind, month, data = pensionConfig()) {
+        const index = (Number(month.slice(0, 4)) - 2026) * 12 + Number(month.slice(5, 7)) - 1;
+        return data[kind + '-enabled'] && index >= Number(data[kind + '-start']) && index <= Number(data[kind + '-end']);
+      }
+
+      function pensionTimeline(inputEvents) {
+        const data = pensionConfig();
+        const events = inputEvents.map(event => ({ ...event, ownPpk: 0, ownPpe: 0, salaryOwn: 0, employerPpk: 0, employerPpe: 0, employerSalary: 0 }));
+        const preferred = new Map();
+        const monthBases = new Map();
+        for (const event of events) {
+          const month = event.date.slice(0, 7);
+          const chosen = preferred.get(month);
+          if (!chosen || (!chosen.pay && event.pay)) preferred.set(month, event);
+          const gross = (event.pay?.gross ?? 0) + event.bonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
+          monthBases.set(month, (monthBases.get(month) ?? 0) + gross);
+        }
+        const number = key => pensionNumber(data, key) ?? 0;
+        const employeePpeByYear = new Map();
+        const queued = [];
+        let issue = null;
+        let after2027 = 0;
+        const active = (kind, month) => pensionActive(kind, month, data);
+        const send = (kind, event, amount, salaryPart) => {
+          const field = kind === 'ppk' ? 'employerPpk' : 'employerPpe';
+          if (data[kind + '-timing'] === 'same') {
+            event[field] += amount;
+            event.employerSalary += salaryPart;
+          } else {
+            const date = new Date(event.date + 'T12:00:00Z');
+            date.setUTCDate(1);
+            date.setUTCMonth(date.getUTCMonth() + 1);
+            queued.push({ month: isoDate(date).slice(0, 7), field, amount });
+          }
+        };
+        for (const event of events) {
+          const month = event.date.slice(0, 7);
+          const year = Number(month.slice(0, 4));
+          const salary = event.pay?.gross ?? 0;
+          const gross = salary + event.bonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
+          if (active('ppk', month)) {
+            event.ownPpk = roundRate(gross, 200) + roundRate(gross, number('ppk-extra-employee'));
+            event.salaryOwn += roundRate(salary, 200) + roundRate(salary, number('ppk-extra-employee'));
+            send('ppk', event, roundRate(gross, 150) + roundRate(gross, number('ppk-extra-employer')), roundRate(salary, 150) + roundRate(salary, number('ppk-extra-employer')));
+          }
+          if (active('ppe', month)) {
+            const fixedHere = preferred.get(month) === event;
+            const ownPercent = data['ppe-employee-unit'] === 'percent';
+            const wanted = ownPercent ? roundRate(gross, number('ppe-employee')) : fixedHere ? number('ppe-employee') : 0;
+            const previousOwn = employeePpeByYear.get(year) ?? 0;
+            event.ownPpe = Math.min(wanted, Math.max(0, ppeEmployeeLimits[year] - previousOwn));
+            employeePpeByYear.set(year, previousOwn + event.ownPpe);
+            event.salaryOwn += ownPercent ? Math.min(event.ownPpe, roundRate(salary, number('ppe-employee'))) : event.ownPpe;
+            const companyPercent = data['ppe-employer-unit'] === 'percent';
+            const company = companyPercent ? roundRate(gross, number('ppe-employer')) : fixedHere ? number('ppe-employer') : 0;
+            if (!companyPercent && company > roundRate(monthBases.get(month) ?? 0, 700)) issue = { key: 'ppe-employer', message: 'PPE — wpłata firmy za ' + month + ' przekracza 7% podstawy w tym miesiącu.' };
+            send('ppe', event, company, companyPercent ? roundRate(salary, number('ppe-employer')) : company);
+          }
+        }
+        for (const kind of ['ppk', 'ppe']) {
+          if (data[kind + '-enabled'] && data[kind + '-start'] === '-1' && data[kind + '-timing'] === 'next') queued.push({ month: '2026-01', field: kind === 'ppk' ? 'employerPpk' : 'employerPpe', amount: number(kind + '-opening') });
+        }
+        const virtual = new Map();
+        for (const item of queued) {
+          if (item.month > '2027-12') { after2027 += item.amount; continue; }
+          let event = preferred.get(item.month) ?? virtual.get(item.month);
+          if (!event) {
+            event = { date: item.month + '-01', pay: null, bonuses: [], virtual: true, ownPpk: 0, ownPpe: 0, salaryOwn: 0, employerPpk: 0, employerPpe: 0, employerSalary: 0 };
+            virtual.set(item.month, event);
+          }
+          event[item.field] += item.amount;
+          event.employerSalary += item.amount;
+        }
+        events.push(...virtual.values());
+        events.sort((a, b) => a.date.localeCompare(b.date) || Number(b.pay != null) - Number(a.pay != null));
+        return { events, issue, after2027 };
+      }
+
+      function refreshPensionSettings() {
+        const data = pensionConfig();
+        const issue = pensionInputError(data);
+        const any = data['ppk-enabled'] || data['ppe-enabled'];
+        ui['pension-assumption'].hidden = !any;
+        for (const kind of ['ppk', 'ppe']) {
+          ui[kind + '-opening-field'].hidden = !(data[kind + '-enabled'] && data[kind + '-start'] === '-1' && data[kind + '-timing'] === 'next');
+          const replaced = deductions.filter(entry => pensionDeductionKind(entry) === kind).length;
+          const status = ui[kind + '-status'];
+          status.className = 'pay-hint' + (issue?.key.startsWith(kind + '-') ? ' pay-danger' : '');
+          status.textContent = issue?.key.startsWith(kind + '-') ? issue.message : data[kind + '-enabled'] ? (replaced ? 'Pozycje „' + kind.toUpperCase() + ' pracownika” na zwykłej liście są zastąpione modułem w miesiącach jego działania i nie są potrącane drugi raz. ' : '') + (kind === 'ppe' ? 'Własne wpłaty ograniczamy do rocznego limitu: 42 390 zł w 2026 i 45 148,50 zł w 2027 (4,5 × prognozowane wynagrodzenie).' : 'Podstawowe wpłaty: pracownik 2%, firma 1,5%. Dodatkowe stawki doliczamy osobno.') : replaced ? 'Ręczne potrącenia z listy pozostają aktywne. Podatek od wpłaty firmy wymaga włączenia modułu.' : 'Moduł wyłączony.';
+        }
+        ui['ppe-employee-label'].textContent = data['ppe-employee-unit'] === 'percent' ? 'Twoja wpłata PPE (%)' : 'Twoja miesięczna wpłata PPE (zł)';
+        ui['ppe-employer-label'].textContent = data['ppe-employer-unit'] === 'percent' ? 'Wpłata pracodawcy PPE (%)' : 'Miesięczna wpłata pracodawcy PPE (zł)';
+        for (const key of Object.keys(pensionDefaults)) {
+          if (issue?.key === key) config[key].setAttribute('aria-invalid', 'true');
+          else config[key].removeAttribute('aria-invalid');
+        }
+      }
+
       function workplaceDeductions() {
         const kzp = config['kzp-enabled'].checked;
         const kzpStart = count('kzp-start');
@@ -800,6 +981,8 @@
             extra += kzpSavings + repayment;
           }
           for (const deduction of deductions) {
+            const program = pensionDeductionKind(deduction);
+            if (program && pensionActive(program, pay.date)) continue;
             const offset = pay.index - deduction.start;
             if (offset < 0 || pay.index > deduction.end || offset % deduction.interval !== 0) continue;
             extra += deduction.percent ? Math.round(pay.gross * deduction.amount / 10000) : deduction.amount;
@@ -816,6 +999,7 @@
       }
 
       const pensionLimits = { 2026: 28260000, 2027: 30099000 };
+      const ppeEmployeeLimits = { 2026: 4239000, 2027: 4514850 };
       const roundRate = (amount, basisPoints) => Math.floor((amount * basisPoints + 5000) / 10000);
       const wholeZloty = amount => Math.floor((amount + 50) / 100) * 100;
       const taxScales = { current: [[12000000, 1200], [null, 3200]], draft3293: [[13000000, 1200], [15000000, 2400], [null, 3200]] };
@@ -842,77 +1026,96 @@
           : 'PIT 2027: jak w 2026 r. — 12% do 120 000 zł i 32% od nadwyżki. Kontynuacja zasad przyjęta do prognozy.';
       }
 
-      function monthPayroll(gross, annualIncome, annualPensionBase, year) {
+      function monthPayroll(gross, annualIncome, annualPensionBase, year, employerIncome = 0) {
         const pensionBase = Math.min(gross, Math.max(0, pensionLimits[year] - annualPensionBase));
         const social = roundRate(pensionBase, 976) + roundRate(pensionBase, 150) + roundRate(gross, 245);
         const afterSocial = gross - social;
-        const income = Math.max(0, afterSocial - 25000);
+        const income = Math.max(0, afterSocial + employerIncome - 25000);
         const taxableBase = wholeZloty(income);
         const brackets = year === 2027 && value('tax-2027') === 'draft3293' ? taxScales.draft3293 : taxScales.current;
         const tax = wholeZloty(Math.max(0, taxForScale(taxableBase, annualIncome, brackets) - 30000));
         const oldReduction = annualIncome < 8552800 ? 4376 : 0;
         const oldAdvance = Math.max(0, progressiveTax(taxableBase, annualIncome, 8552800, 1700) - oldReduction);
         const health = Math.min(roundRate(afterSocial, 900), oldAdvance);
-        return { income, pensionBase, contributions: social + health, tax };
+        return { income, pensionBase, contributions: social + health, tax, social, health };
       }
 
       function payrollTimeline() {
         const deductions = workplaceDeductions();
         const activeBonuses = bonuses.filter(bonus => config.optional.checked || !bonus.optional);
-        const events = paychecks.map(pay => ({
+        const rawEvents = paychecks.map(pay => ({
           date: pay.date, pay, bonuses: activeBonuses.filter(bonus => bonus.link === pay.index),
         }));
-        events.push(...activeBonuses.filter(bonus => bonus.link == null).map(bonus => ({ date: bonus.date, pay: null, bonuses: [bonus] })));
+        rawEvents.push(...activeBonuses.filter(bonus => bonus.link == null).map(bonus => ({ date: bonus.date, pay: null, bonuses: [bonus] })));
         // Same-date independent transfers use the month's accumulated tax and contribution base.
-        events.sort((a, b) => a.date.localeCompare(b.date) || Number(b.pay != null) - Number(a.pay != null));
+        rawEvents.sort((a, b) => a.date.localeCompare(b.date) || Number(b.pay != null) - Number(a.pay != null));
+        const pension = pensionTimeline(rawEvents);
 
         let month = '';
         let year = 0;
         let monthGross = 0;
+        let monthEmployerIncome = 0;
+        let paidTax = 0;
+        let paidContributions = 0;
         let annualIncome = 0;
         let annualPensionBase = 0;
         let previous = monthPayroll(0, 0, 0, 2026);
         const pays = [];
         const separate = [];
+        const uncollected = [];
 
-        for (const event of events) {
+        for (const event of pension.events) {
           const eventMonth = event.date.slice(0, 7);
           const eventYear = Number(event.date.slice(0, 4));
           if (eventMonth !== month) {
+            if (month && previous.tax > paidTax) uncollected.push({ month, tax: previous.tax - paidTax });
             annualIncome = year === eventYear ? annualIncome + previous.income : 0;
             annualPensionBase = year === eventYear ? annualPensionBase + previous.pensionBase : 0;
             month = eventMonth;
             year = eventYear;
             monthGross = 0;
+            monthEmployerIncome = 0;
+            paidTax = 0;
+            paidContributions = 0;
             previous = monthPayroll(0, annualIncome, annualPensionBase, year);
           }
           const pay = event.pay;
           const bonusGross = event.bonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
           const regularGross = pay?.gross ?? 0;
           const gross = regularGross + bonusGross;
-          const totals = monthPayroll(monthGross + gross, annualIncome, annualPensionBase, year);
-          const contributions = totals.contributions - previous.contributions;
-          const tax = totals.tax - previous.tax;
-          const withheld = pay ? deductions[pay.index] : 0;
+          const employerIncome = event.employerPpk + event.employerPpe;
+          const ownPension = event.ownPpk + event.ownPpe;
+          const incomeBefore = annualIncome + previous.income;
+          const totals = monthPayroll(monthGross + gross, annualIncome, annualPensionBase, year, monthEmployerIncome + employerIncome);
+          const contributions = totals.contributions - paidContributions;
+          const tax = totals.tax - paidTax;
+          const otherWithheld = pay ? deductions[pay.index] : 0;
+          const withheld = otherWithheld + ownPension;
           const totalNet = pay?.enteredNet ?? gross - contributions - tax - withheld;
 
-          if (pay) {
+          if (event.virtual) {
+            // A benefit without a later cash transfer does not create a negative
+            // transfer. Its income enters PIT; uncollected tax is disclosed.
+          } else if (pay) {
             // The reserve can have different sources, so estimate the salary share without the bonus.
-            const salaryPayroll = bonusGross ? monthPayroll(monthGross + regularGross, annualIncome, annualPensionBase, year) : totals;
-            const salaryOnly = regularGross - (salaryPayroll.tax - previous.tax) - (salaryPayroll.contributions - previous.contributions) - withheld;
+            const salaryPayroll = bonusGross ? monthPayroll(monthGross + regularGross, annualIncome, annualPensionBase, year, monthEmployerIncome + event.employerSalary) : totals;
+            const salaryOnly = regularGross - (salaryPayroll.tax - paidTax) - (salaryPayroll.contributions - paidContributions) - otherWithheld - event.salaryOwn;
             const bonusNet = bonusGross ? Math.max(0, totalNet - Math.max(0, salaryOnly)) : 0;
-            pays[pay.index] = { ...pay, salary: totalNet - bonusNet, receivedTransfer: totalNet, bonusNet, bonusGross, withheld, contributions, tax };
+            pays[pay.index] = { ...pay, salary: totalNet - bonusNet, receivedTransfer: totalNet, bonusNet, bonusGross, withheld, contributions, tax, ownPension, employerIncome, incomeBefore, incomeAfter: annualIncome + totals.income };
           } else {
-            separate.push({ date: event.date, amount: totalNet, gross: bonusGross, contributions, tax });
+            separate.push({ date: event.date, amount: totalNet, gross: bonusGross, contributions, tax, withheld, ownPension, employerIncome });
           }
+          if (!event.virtual) { paidTax = totals.tax; paidContributions = totals.contributions; }
           previous = totals;
           monthGross += gross;
+          monthEmployerIncome += employerIncome;
         }
-        return { pays, separate };
+        if (month && previous.tax > paidTax) uncollected.push({ month, tax: previous.tax - paidTax });
+        return { pays, separate, pensionIssue: pension.issue, pensionAfter2027: pension.after2027, uncollected };
       }
 
-      function collectPeriods(start, end) {
-        const { pays, separate } = payrollTimeline();
+      function collectPeriods(start, end, timeline = payrollTimeline()) {
+        const { pays, separate } = timeline;
         return pays.slice(start, end + 1).map(pay => {
           const firstDate = pay.index === start ? planStartDate(pay) : pay.date;
           const nextDate = pays[pay.index + 1]?.date ?? defaultPayDate(24);
@@ -922,6 +1125,9 @@
           let separateGross = 0;
           let separateContributions = 0;
           let separateTax = 0;
+          let separateWithheld = 0;
+          let separateOwnPension = 0;
+          let separateEmployerIncome = 0;
           let valid = pay.salary >= 0;
           for (const bonus of separate) {
             if (bonus.date < firstDate || bonus.date >= nextDate) continue;
@@ -932,8 +1138,11 @@
             separateGross += bonus.gross;
             separateContributions += bonus.contributions;
             separateTax += bonus.tax;
+            separateWithheld += bonus.withheld;
+            separateOwnPension += bonus.ownPension;
+            separateEmployerIncome += bonus.employerIncome;
           }
-          return { ...pay, earlier, sameDay, later, separateGross, separateContributions, separateTax, received: valid ? pay.salary + earlier + sameDay + later : null };
+          return { ...pay, earlier, sameDay, later, separateGross, separateContributions, separateTax, separateWithheld, separateOwnPension, separateEmployerIncome, received: valid ? pay.salary + earlier + sameDay + later : null };
         });
       }
 
@@ -975,8 +1184,15 @@
       function calculatePlan() {
         const start = count('start');
         const end = count('end');
-        const periods = collectPeriods(start, end);
-        const result = { periods, target: null, projection: null, limit: null, error: '', mode: goals.find(goal => goal.checked).value };
+        const timeline = payrollTimeline();
+        const periods = collectPeriods(start, end, timeline);
+        const result = { periods, target: null, projection: null, limit: null, error: '', mode: goals.find(goal => goal.checked).value, uncollected: timeline.uncollected, pensionAfter2027: timeline.pensionAfter2027 };
+        const pensionIssue = pensionInputError() ?? timeline.pensionIssue;
+        if (pensionIssue) {
+          result.error = pensionIssue.message;
+          for (const row of periods) row.received = null;
+          return result;
+        }
         const kzpIssue = kzpInputError();
         if (kzpIssue) {
           result.error = kzpIssue.message;
@@ -1239,6 +1455,11 @@
 
       bindSave('deduction', () => {
         const kind = value('deduction-kind');
+        const program = pensionDeductionKind({ kind, name: value('deduction-name') });
+        if (!editing.deduction && program && pensionConfig()[program + '-enabled']) {
+          feedback('deduction', program.toUpperCase() + ' jest już rozliczane w module poniżej. Zmień jego ustawienia zamiast dodawać drugie potrącenie.', config['deduction-kind']);
+          return;
+        }
         const name = kind === 'custom' ? value('deduction-name').trim() : kind;
         if (!name) {
           feedback('deduction', 'Wpisz nazwę potrącenia.', config['deduction-name']);
@@ -1412,7 +1633,13 @@
         fields['bonus-gross'].textContent = money(bonusGross);
         fields.contributions.textContent = delta(-row.contributions - row.separateContributions);
         fields.tax.textContent = delta(-row.tax - row.separateTax);
-        fields.deductions.textContent = delta(-row.withheld);
+        fields.deductions.textContent = delta(-row.withheld - row.separateWithheld);
+        const ownPension = row.ownPension + row.separateOwnPension;
+        const employerIncome = row.employerIncome + row.separateEmployerIncome;
+        ui['pension-own-row'].hidden = !ownPension;
+        ui['pension-employer-row'].hidden = !employerIncome;
+        fields['pension-own'].textContent = delta(-ownPension);
+        fields['pension-employer'].textContent = money(employerIncome);
         fields['salary-cash'].textContent = money(row.receivedTransfer);
         fields['bonus-cash'].textContent = money(bonusNet);
         ui['breakdown-list'].hidden = actual;
@@ -1441,12 +1668,20 @@
       }
 
       function refresh(persist = true) {
+        refreshPensionSettings();
         plan = calculatePlan();
         const first = plan.periods[0];
         const last = plan.periods.at(-1);
         const taxDescription = tax2027Description();
         fields['tax-2027-note'].textContent = taxDescription + ' Wybór dotyczy dat wypłat w 2027 r. Wypłaty z datą w 2026 r. zachowują swoją skalę.';
-        fields['tax-assumptions'].textContent = 'Umowa o pracę u jednego pracodawcy, standardowe koszty uzyskania i 300 zł miesięcznego pomniejszenia zaliczki. ' + taxDescription + ' Wpłaty PPK i PPE wpisane w Potrąceniach obniżają wypłatę o część pracownika.';
+        fields['tax-assumptions'].textContent = 'Umowa o pracę u jednego pracodawcy, standardowe koszty uzyskania i 300 zł miesięcznego pomniejszenia zaliczki. ' + taxDescription;
+        const pensionData = pensionConfig();
+        const activePension = pensionData['ppk-enabled'] || pensionData['ppe-enabled'];
+        const legacyPension = deductions.some(entry => { const kind = pensionDeductionKind(entry); return kind && !pensionData[kind + '-enabled']; });
+        const unpaid = plan.uncollected.reduce((sum, entry) => sum + entry.tax, 0);
+        const pensionNote = (activePension ? 'Moduły PPK/PPE: własne wpłaty potrącamy z netto; wpłaty firmy zwiększają dochód do PIT i nie zwiększają gotówki. Zakładamy przekazanie wpłaty firmy przed pensją w wybranym miesiącu rozliczenia. ' : '') + (legacyPension ? 'Ręczne pozycje PPK/PPE na liście potrąceń nie obejmują podatku od wpłat pracodawcy. ' : '') + (unpaid ? 'Niepobrane zaliczki w miesiącach bez wypłaty: ' + money(unpaid) + '; wymagają uwzględnienia przy rozliczeniu rocznym. ' : '') + (last.index === 23 && plan.pensionAfter2027 ? 'Wpłaty firmy do rozliczenia po 2027 r.: ' + money(plan.pensionAfter2027) + '.' : '');
+        fields['pension-note'].hidden = !pensionNote;
+        fields['pension-note'].textContent = pensionNote;
         fields['plan-start'].textContent = 'Początek planu: ' + shortDate(planStartDate(first)) + '. Podaj rezerwę sprzed wpływów tego dnia. Wcześniejsza pensja przesuwa początek planu przed wybrany miesiąc.';
         const kzpIssue = kzpInputError();
         ui['kzp-feedback'].hidden = !kzpIssue;
@@ -1482,7 +1717,7 @@
         renderTable();
         selectMonth(chosen, false);
         renderList('bonus', bonuses, bonus => bonus.name + ' · ' + money(bonus.amount) + ' brutto · ' + shortDate(bonus.link == null ? bonus.date : paychecks[bonus.link].date) + (bonus.optional ? ' · niepewna' : ''), startBonusEdit);
-        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? formatPercent(deduction.amount) : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + monthWithYear(paychecks[deduction.start]) + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + monthWithYear(paychecks[deduction.end]) : ''), startDeductionEdit);
+        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? formatPercent(deduction.amount) : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + monthWithYear(paychecks[deduction.start]) + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + monthWithYear(paychecks[deduction.end]) : '') + (pensionDeductionKind(deduction) && pensionData[pensionDeductionKind(deduction) + '-enabled'] ? ' · zastąpione w okresie działania modułu ' + pensionDeductionKind(deduction).toUpperCase() : ''), startDeductionEdit);
         ui['bonus-empty'].hidden = bonuses.length > 0;
         ui['deduction-empty'].hidden = deductions.length > 0;
         if (persist) {
@@ -1502,6 +1737,12 @@
       for (const key of ['source', 'initial', 'confirmed', 'floor', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027']) {
         config[key].addEventListener('change', refresh);
       }
+      for (const key of Object.keys(pensionDefaults)) config[key].addEventListener('change', () => {
+        const kind = key.slice(0, 3);
+        if (key.endsWith('-start') && count(kind + '-start') > count(kind + '-end')) config[kind + '-end'].value = value(kind + '-start');
+        if (key.endsWith('-end') && count(kind + '-end') < count(kind + '-start')) config[kind + '-start'].value = value(kind + '-end');
+        refresh();
+      });
       for (const goal of goals) goal.addEventListener('change', refresh);
       config.manual.addEventListener('input', refresh);
       monthPicker.addEventListener('change', () => {
