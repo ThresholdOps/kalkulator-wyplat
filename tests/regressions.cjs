@@ -18,6 +18,7 @@ function subject(overrides = {}) {
     config: { optional: { checked: true }, 'kzp-enabled': { checked: false } },
     goals: ['maximum', 'manual', 'off'].map(value => ({ checked: value === 'maximum', value })),
     bonuses: [],
+    deductions: [],
     paychecks: Array.from({ length: 24 }, (_, index) => ({
       index,
       year: 2026 + Math.floor(index / 12),
@@ -37,14 +38,14 @@ function subject(overrides = {}) {
   context.config['tax-2027'] ??= { value: 'current' };
   const originalValue = context.value;
   context.value = key => key === 'tax-2027' ? context.config[key].value : originalValue(key);
-  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty', 'taxScales', 'monthGenitives'];
+  const constants = ['amountFormat', 'numberFormat', 'inZloty', 'formatPercent', 'money', 'isoDate', 'pensionLimits', 'roundRate', 'wholeZloty', 'taxScales', 'monthGenitives', 'pensionDefaults', 'ppeEmployeeLimits'];
   const declarations = constants.map(name => {
     const match = source.match(new RegExp('^      const ' + name + ' = .+;$', 'm'));
     assert.ok(match, 'Missing constant ' + name);
     return match[0];
   });
-  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'taxForScale', 'tax2027Description', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage', 'monthWithYear', 'availableBonusPeriods', 'chartYears', 'populatePaycheck', 'enteredAmount'];
-  const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money, formatPercent };'].join('\n');
+  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'taxForScale', 'tax2027Description', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage', 'monthWithYear', 'availableBonusPeriods', 'chartYears', 'populatePaycheck', 'enteredAmount', 'pensionConfig', 'pensionNumber', 'pensionInputError', 'pensionDeductionKind', 'pensionActive', 'pensionTimeline'];
+  const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money, formatPercent, pensionDefaults };'].join('\n');
   vm.runInNewContext(code, context);
   return { ...context.subject, context };
 }
@@ -163,6 +164,7 @@ function storageSubject(storage = new Map(), failWrites = false, edited = true) 
     'kzp-enabled': false, 'kzp-start': '0', 'kzp-savings': '200', 'kzp-initial': '0', 'kzp-debt': '0', 'kzp-rate': '0',
     'pay-from': '0', 'pay-gross': '14500',
     'tax-2027': 'current',
+    ...app.pensionDefaults,
   };
   context.config = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === 'boolean' ? { type: 'checkbox', checked: value } : { value }]));
   for (const key of ['kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate']) {
@@ -484,7 +486,7 @@ test('a 0.5.1 plan without the new field restores with the default preset and al
   restored.loadPlan();
   assert.match(restored.context.ui['storage-status'].textContent, /Odtworzono/);
   assert.equal(restored.context.config['tax-2027'].value, 'current');
-  assert.equal(JSON.stringify(restored.storedPlan()), JSON.stringify({ ...legacy, config: { ...legacy.config, 'tax-2027': 'current' } }));
+  assert.deepEqual(JSON.parse(JSON.stringify(restored.storedPlan())), { ...legacy, config: { ...legacy.config, 'tax-2027': 'current' } });
   assert.equal([...app.storage.values()][0], serialized);
   restored.savePlan();
   assert.equal(JSON.parse([...app.storage.values()][0]).config['tax-2027'], 'current');
@@ -559,4 +561,313 @@ test('chart year bands cover every month of full and partial multi-year plans', 
   assert.deepEqual(normalize(app.chartYears(app.context.paychecks.slice(12, 13))), [
     { year: 2027, start: 0, count: 1 },
   ]);
+});
+
+function pensionSubject(settings = {}, overrides = {}) {
+  const app = subject(overrides);
+  for (const [key, value] of Object.entries({ ...app.pensionDefaults, ...settings })) {
+    app.context.config[key] = typeof value === 'boolean' ? { type: 'checkbox', checked: value } : { value: String(value) };
+  }
+  for (const pay of app.context.paychecks) {
+    pay.date = app.defaultPayDate(pay.index);
+    pay.gross = 1000000;
+  }
+  return app;
+}
+
+test('employer PPE income raises PIT and the threshold counter without increasing social or health bases', () => {
+  const app = pensionSubject();
+  const plain = app.monthPayroll(1000000, 0, 0, 2026);
+  const benefit = app.monthPayroll(1000000, 0, 0, 2026, 70000);
+  assert.equal(benefit.social, 137100);
+  assert.equal(benefit.health, 77661);
+  assert.equal(benefit.contributions, plain.contributions);
+  assert.equal(benefit.pensionBase, plain.pensionBase);
+  assert.equal(benefit.income - plain.income, 70000);
+  assert.equal(benefit.tax, 78900);
+  assert.equal(benefit.tax - plain.tax, 8400);
+});
+
+test('PPK anchor: standard employee and employer rates reduce 10,000 gross net to 6,929.39', () => {
+  const app = pensionSubject({ 'ppk-enabled': true });
+  const row = app.payrollTimeline().pays[0];
+  assert.equal(row.ownPension, 20000);
+  assert.equal(row.employerIncome, 15000);
+  assert.equal(row.contributions, 214761);
+  assert.equal(row.tax, 72300);
+  assert.equal(row.receivedTransfer, 692939);
+  assert.equal(row.incomeAfter, 852900);
+});
+
+test('PPK anchor: employer 150 increases PIT by 48 in the 32 percent bracket', () => {
+  const app = pensionSubject();
+  const row = app.monthPayroll(1000000, 15000000, 0, 2026, 15000);
+  assert.equal(row.tax, 242900);
+  assert.equal(row.contributions, 214761);
+  assert.equal(1000000 - row.tax - row.contributions - 20000, 522339);
+});
+
+test('PPK anchor: maximum additional rates give 4 percent each without compounding employer benefits', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-extra-employee': '2', 'ppk-extra-employer': '2.5' });
+  const row = app.payrollTimeline().pays[0];
+  assert.equal(row.ownPension, 40000);
+  assert.equal(row.employerIncome, 40000);
+  assert.equal(row.tax, 75300);
+  assert.equal(row.receivedTransfer, 669939);
+});
+
+test('PPK covers a linked bonus and assigns its net increment without treating the employer payment as cash', () => {
+  const app = pensionSubject({ 'ppk-enabled': true });
+  app.context.bonuses.push({ amount: 500000, date: '2026-01-29', link: 0, optional: false });
+  const row = app.payrollTimeline().pays[0];
+  assert.equal(row.ownPension, 30000);
+  assert.equal(row.employerIncome, 22500);
+  assert.equal(row.tax, 125000);
+  assert.equal(row.contributions, 322142);
+  assert.equal(row.receivedTransfer, 1022858);
+  assert.equal(row.salary, 692939);
+  assert.equal(row.bonusNet, 329919);
+});
+
+test('PPK covers independent bonus transfers using the shared monthly payroll state', () => {
+  const app = pensionSubject({ 'ppk-enabled': true });
+  app.context.bonuses.push({ amount: 500000, date: '2026-01-10', link: null, optional: false });
+  const { pays, separate } = app.payrollTimeline();
+  assert.equal(separate[0].ownPension, 10000);
+  assert.equal(separate[0].employerIncome, 7500);
+  assert.equal(pays[0].ownPension, 20000);
+  assert.equal(pays[0].receivedTransfer + separate[0].amount, 1022858);
+  assert.equal(pays[0].tax + separate[0].tax, 125000);
+  assert.equal(pays[0].contributions + separate[0].contributions, 322142);
+});
+
+test('a later bonus subject to PPK cannot fund an earlier payday budget', () => {
+  const app = pensionSubject({ 'ppk-enabled': true });
+  app.context.bonuses.push({ amount: 500000, date: '2026-01-30', link: null, optional: false });
+  const periods = app.collectPeriods(0, 0);
+  assert.equal(periods[0].salary, 692939);
+  assert.ok(periods[0].later > 0);
+  assert.equal(app.simulate(periods, 700000, 0, 0, 'both').failure.shortfall, 7061);
+});
+
+test('PPK continues using the full gross basis after the annual pension cap', () => {
+  const app = pensionSubject({ 'ppk-enabled': true });
+  for (const pay of app.context.paychecks) pay.gross = 5000000;
+  const rows = app.payrollTimeline().pays;
+  for (const index of [0, 5, 11, 12, 18, 23]) {
+    assert.equal(rows[index].ownPension, 100000);
+    assert.equal(rows[index].employerIncome, 75000);
+  }
+});
+
+test('next-month PPK separates current employee withholding from delayed employer PIT income', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-timing': 'next' });
+  const { pays } = app.payrollTimeline();
+  assert.equal(pays[0].employerIncome, 0);
+  assert.equal(pays[0].ownPension, 20000);
+  assert.equal(pays[0].receivedTransfer, 694739);
+  assert.equal(pays[1].employerIncome, 15000);
+  assert.equal(pays[1].receivedTransfer, 692939);
+});
+
+test('December employer PPK enters the next year and January gets only that delayed amount', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-timing': 'next' });
+  app.context.paychecks[11].gross = 2000000;
+  const { pays } = app.payrollTimeline();
+  assert.equal(pays[11].employerIncome, 15000);
+  assert.equal(pays[12].employerIncome, 30000);
+  assert.equal(pays[12].incomeBefore, 0);
+  assert.equal(pays[12].incomeAfter, 867900);
+  assert.equal(pays[12].tax, 74100);
+  assert.equal(pays[12].receivedTransfer, 691139);
+});
+
+test('a program active before 2026 requires an explicit opening employer payment when delayed', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-start': '-1', 'ppk-timing': 'next' });
+  assert.equal(app.pensionInputError().key, 'ppk-opening');
+  assert.match(app.calculatePlan().error, /2025/);
+  app.context.config['ppk-opening'].value = '0';
+  assert.equal(app.pensionInputError(), null);
+  assert.equal(app.payrollTimeline().pays[0].employerIncome, 0);
+  app.context.config['ppk-opening'].value = '150';
+  const row = app.collectPeriods(0, 0)[0];
+  assert.equal(row.employerIncome, 15000);
+  assert.equal(row.received, 692939);
+  assert.equal(app.simulate([row], 692940, 0, 0, 'both').failure.shortfall, 1);
+});
+
+test('December 2027 employer payments scheduled for 2028 are disclosed without entering 2027 PIT', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-timing': 'next' });
+  app.context.paychecks[23].gross = 2000000;
+  const timeline = app.payrollTimeline();
+  assert.equal(timeline.pensionAfter2027, 30000);
+  assert.equal(timeline.pays[23].employerIncome, 15000);
+});
+
+test('a month without cash records employer PIT income and unpaid tax without inventing a negative transfer', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-start': '-1', 'ppk-timing': 'next', 'ppk-opening': '10000' });
+  app.context.paychecks[0].date = '2026-02-02';
+  const timeline = app.payrollTimeline();
+  assert.equal(timeline.separate.length, 0);
+  assert.equal(timeline.uncollected[0].month, '2026-01');
+  assert.equal(timeline.uncollected[0].tax, 87000);
+  assert.equal(timeline.pays[0].incomeBefore, 975000);
+  assert.ok(timeline.pays[0].receivedTransfer > 0);
+});
+
+test('PPE anchor: 250 employee plus 7 percent employer gives 6,813.39 net on 10,000 gross', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employee': '250', 'ppe-employer': '7' });
+  const row = app.payrollTimeline().pays[0];
+  assert.equal(row.ownPension, 25000);
+  assert.equal(row.employerIncome, 70000);
+  assert.equal(row.tax, 78900);
+  assert.equal(row.contributions, 214761);
+  assert.equal(row.receivedTransfer, 681339);
+});
+
+test('PPE fixed amounts apply once a calendar month even with several salary transfers', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employee': '250', 'ppe-employer-unit': 'amount', 'ppe-employer': '700' });
+  app.context.paychecks[1].date = '2026-01-30';
+  const timeline = app.payrollTimeline();
+  assert.equal(timeline.pays[0].ownPension + timeline.pays[1].ownPension, 25000);
+  assert.equal(timeline.pays[0].employerIncome + timeline.pays[1].employerIncome, 70000);
+});
+
+test('fixed PPE remains on salary when an independent bonus precedes it', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employee': '250', 'ppe-employer-unit': 'amount', 'ppe-employer': '700' });
+  app.context.bonuses.push({ amount: 500000, date: '2026-01-10', link: null, optional: false });
+  const timeline = app.payrollTimeline();
+  assert.equal(timeline.separate[0].ownPension, 0);
+  assert.equal(timeline.separate[0].employerIncome, 0);
+  assert.equal(timeline.pays[0].ownPension, 25000);
+  assert.equal(timeline.pays[0].employerIncome, 70000);
+  assert.equal(timeline.pays[0].receivedTransfer + timeline.separate[0].amount, 1022158);
+});
+
+test('PPE employee annual limits stop withholding and reset separately for each year', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employee': '4000', 'ppe-employer': '7' });
+  const rows = app.payrollTimeline().pays;
+  assert.equal(rows[10].ownPension, 239000);
+  assert.equal(rows[11].ownPension, 0);
+  assert.equal(rows[12].ownPension, 400000);
+  assert.equal(rows[23].ownPension, 114850);
+  assert.equal(rows.slice(0, 12).reduce((sum, row) => sum + row.ownPension, 0), 4239000);
+  assert.equal(rows.slice(12).reduce((sum, row) => sum + row.ownPension, 0), 4514850);
+});
+
+test('percentage PPE covers both salary and bonuses, including after the pension cap', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employee-unit': 'percent', 'ppe-employee': '1', 'ppe-employer': '7' });
+  for (const pay of app.context.paychecks) pay.gross = 5000000;
+  app.context.bonuses.push({ amount: 500000, date: '2026-12-10', link: null, optional: false });
+  const timeline = app.payrollTimeline();
+  assert.equal(timeline.pays[11].ownPension, 50000);
+  assert.equal(timeline.pays[11].employerIncome, 350000);
+  assert.equal(timeline.separate[0].ownPension, 5000);
+  assert.equal(timeline.separate[0].employerIncome, 35000);
+});
+
+test('PPK and PPE coexist and combine only their tax income and employee withholding', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppe-enabled': true, 'ppe-employee': '250', 'ppe-employer': '7' });
+  const row = app.payrollTimeline().pays[0];
+  assert.equal(row.ownPension, 45000);
+  assert.equal(row.employerIncome, 85000);
+  assert.equal(row.tax, 80700);
+  assert.equal(row.contributions, 214761);
+  assert.equal(row.receivedTransfer, 659539);
+});
+
+test('legacy PPK and PPE deductions are replaced once and return when a module is disabled', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppe-enabled': true, 'ppe-employee': '250', 'ppe-employer': '7' });
+  app.context.ui = { 'kzp-summary': {} };
+  app.context.deductions.push(
+    { kind: 'PPK pracownika', name: 'PPK pracownika', amount: 20000, percent: false, start: 0, end: 23, interval: 1 },
+    { kind: 'PPE pracownika', name: 'PPE pracownika', amount: 25000, percent: false, start: 0, end: 23, interval: 1 },
+  );
+  vm.runInContext(pageFunction('workplaceDeductions'), app.context);
+  assert.equal(app.payrollTimeline().pays[0].withheld, 45000);
+  assert.equal(app.payrollTimeline().pays[0].receivedTransfer, 659539);
+  app.context.config['ppk-enabled'].checked = false;
+  app.context.config['ppe-enabled'].checked = false;
+  assert.equal(app.payrollTimeline().pays[0].withheld, 45000);
+  assert.equal(app.context.deductions.length, 2);
+});
+
+test('legacy deductions before the new module starts remain effective', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppk-start': '6' });
+  app.context.ui = { 'kzp-summary': {} };
+  app.context.deductions.push({ kind: 'PPK pracownika', name: 'PPK pracownika', amount: 20000, percent: false, start: 0, end: 23, interval: 1 });
+  vm.runInContext(pageFunction('workplaceDeductions'), app.context);
+  const rows = app.payrollTimeline().pays;
+  assert.equal(rows[0].ownPension, 0);
+  assert.equal(rows[0].withheld, 20000);
+  assert.equal(rows[6].ownPension, 20000);
+  assert.equal(rows[6].withheld, 20000);
+});
+
+test('an entered real transfer is never reduced a second time by program contributions', () => {
+  const app = pensionSubject({ 'ppk-enabled': true, 'ppe-enabled': true, 'ppe-employee': '250', 'ppe-employer': '7' });
+  app.context.paychecks[0].enteredNet = 654321;
+  assert.equal(app.payrollTimeline().pays[0].receivedTransfer, 654321);
+  assert.equal(app.collectPeriods(0, 0)[0].received, 654321);
+});
+
+for (const preset of ['current', 'draft3293']) {
+  test('2027 employer program income uses the selected PIT scale: ' + preset, () => {
+    const app = pensionSubject({ 'ppk-enabled': true });
+    app.context.config['tax-2027'].value = preset;
+    const row = app.monthPayroll(1000000, 12500000, 0, 2027, 15000);
+    assert.equal(row.contributions, 214761);
+    assert.equal(row.tax, preset === 'current' ? 242900 : 114700);
+  });
+}
+
+test('program validation identifies missing employer PPE and invalid additional rates', () => {
+  const app = pensionSubject({ 'ppe-enabled': true });
+  assert.equal(app.pensionInputError().key, 'ppe-employer');
+  assert.equal(app.calculatePlan().periods[0].received, null);
+  app.context.config['ppe-employer'].value = '7.01';
+  assert.equal(app.pensionInputError().key, 'ppe-employer');
+  app.context.config['ppe-enabled'].checked = false;
+  app.context.config['ppk-enabled'].checked = true;
+  app.context.config['ppk-extra-employee'].value = '2.01';
+  assert.equal(app.pensionInputError().key, 'ppk-extra-employee');
+  app.context.config['ppk-extra-employee'].value = '0';
+  app.context.config['ppk-extra-employer'].value = '2.51';
+  assert.equal(app.pensionInputError().key, 'ppk-extra-employer');
+});
+
+test('fixed employer PPE above 7 percent of the monthly basis is rejected', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employer-unit': 'amount', 'ppe-employer': '701' });
+  assert.match(app.calculatePlan().error, /przekracza 7%/);
+});
+
+test('old 0.6.1 plans without program fields keep all data and leave both modules disabled', () => {
+  const app = storageSubject();
+  app.savePlan();
+  const legacy = JSON.parse([...app.storage.values()][0]);
+  for (const key of Object.keys(app.context.subject.pensionDefaults)) delete legacy.config[key];
+  app.storage.set('kalkulator-wyplat.plan.v1', JSON.stringify(legacy));
+  const restored = storageSubject(app.storage, false, false);
+  restored.loadPlan();
+  assert.match(restored.context.ui['storage-status'].textContent, /Odtworzono/);
+  assert.equal(restored.context.config['ppk-enabled'].checked, false);
+  assert.equal(restored.context.config['ppe-enabled'].checked, false);
+  assert.equal(restored.context.paychecks[0].gross, 1450000);
+});
+
+test('program settings, timing and opening payments survive saved plan restoration', () => {
+  const app = storageSubject();
+  app.context.config['ppk-enabled'].checked = true;
+  app.context.config['ppk-start'].value = '-1';
+  app.context.config['ppk-timing'].value = 'next';
+  app.context.config['ppk-opening'].value = '150';
+  app.context.config['ppk-extra-employee'].value = '2';
+  app.context.config['ppk-extra-employer'].value = '2.5';
+  app.context.config['ppe-enabled'].checked = true;
+  app.context.config['ppe-employee'].value = '250';
+  app.context.config['ppe-employer'].value = '7';
+  app.savePlan();
+  const restored = storageSubject(app.storage, false, false);
+  restored.loadPlan();
+  assert.equal(JSON.stringify(restored.storedPlan()), JSON.stringify(app.storedPlan()));
 });
