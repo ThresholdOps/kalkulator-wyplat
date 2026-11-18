@@ -1,6 +1,6 @@
 # Kalkulator wypłat
 
-Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.6.0.
+Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.6.1.
 
 [Kalkulator na GitHub Pages](https://thresholdops.github.io/kalkulator-wyplat/)
 
@@ -21,4 +21,6 @@ Wybrany wariant zapisuje się z planem i jest widoczny w założeniach oraz podp
 Testy obejmują oba warianty, stałe kwoty dla nowych progów, przekroczenie dwóch progów jedną wypłatą, współdzielone naliczenia miesiąca, faktyczny rok przelewu, maksimum dla całego 2027 r., limit składek 300 990 zł i odtwarzanie starszego zapisu. Dla przykładowej pensji 14 500 zł brutto maksimum 2027 wynosi 9 762,38 zł w wariancie domyślnym i 10 043,47 zł w symulacji.
 
 Źródła parametrów: [skala 2026 — podatki.gov.pl](https://podatki.gov.pl/podatki-osobiste/pit/informacje-podstawowe/co-jest-opodatkowane/dochody-z-pracy), [progi wariantu 3293 — materiał sejmowy, art. 1](https://api.sejm.gov.pl/sejm/term10/prints/3323/3323.pdf), [limit składek 2027 — Monitor Polski, poz. 1098](https://www.dziennikustaw.gov.pl/M2026000109801.pdf). Etykieta symulacji opisuje wybrany scenariusz obliczeń; aplikacja nie aktualizuje samoczynnie statusu legislacyjnego ani wariantu domyślnego.
+
+Wersja 0.6.1 porządkuje interfejs: komunikaty stosują formy „od stycznia” i „do grudnia”, pole potwierdzonego przelewu używa przecinka i dwóch miejsc po przecinku, a listy okresów premiowych obejmują tylko wypłaty mieszczące się w obsługiwanych latach. Wykres pokazuje cały wybrany plan z osobnymi oznaczeniami lat. Na ekranach do 640 px tabela pokazuje komplet kwot każdego miesiąca w pionie, bez poziomego przewijania. Nazwy wariantów PIT są krótsze; pełne stawki i progi pozostają w opisie ustawienia.
 
