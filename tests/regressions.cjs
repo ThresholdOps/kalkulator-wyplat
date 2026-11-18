@@ -40,7 +40,7 @@ function subject(overrides = {}) {
     assert.ok(match, 'Missing constant ' + name);
     return match[0];
   });
-  const functions = ['defaultPayDate', 'firstMonthDate', 'progressiveTax', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
+  const functions = ['defaultPayDate', 'planStartDate', 'kzpInputError', 'progressiveTax', 'monthPayroll', 'payrollTimeline', 'collectPeriods', 'simulate', 'calculatePlan', 'failureMessage'];
   const code = [...declarations, ...functions.map(pageFunction), 'globalThis.subject = { ' + functions.join(', ') + ', money, formatPercent };'].join('\n');
   vm.runInNewContext(code, context);
   return { ...context.subject, context };
@@ -137,7 +137,7 @@ test('moving the first salary into March preserves a bonus paid in February', ()
   app.context.bonuses.push({ amount: 500000, date: '2026-02-10', link: null, optional: false });
   const periods = app.collectPeriods(1, 11);
   const bonus = app.payrollTimeline().separate[0];
-  assert.equal(app.firstMonthDate(periods[0]), '2026-02-01');
+  assert.equal(app.planStartDate(periods[0]), '2026-02-01');
   assert.equal(periods[0].earlier, bonus.amount);
   assert.equal(periods[0].received, periods[0].salary + bonus.amount);
   for (const mode of ['salary', 'bonus', 'both']) {
@@ -147,7 +147,7 @@ test('moving the first salary into March preserves a bonus paid in February', ()
   }
 });
 
-function storageSubject(storage = new Map(), failWrites = false) {
+function storageSubject(storage = new Map(), failWrites = false, edited = true) {
   const app = subject();
   const context = app.context;
   for (const pay of context.paychecks) {
@@ -161,11 +161,13 @@ function storageSubject(storage = new Map(), failWrites = false) {
     'pay-from': '0', 'pay-gross': '14500',
   };
   context.config = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === 'boolean' ? { type: 'checkbox', checked: value } : { value }]));
+  for (const key of ['kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate']) {
+    context.config[key].checkValidity = () => Number(context.config[key].value) >= 0 && Number(context.config[key].value) <= 10000000;
+  }
   context.salaryChanges = new Map([[0, 1450000]]);
   context.deductions = [];
   context.chosen = 5;
-  context.ui = { 'storage-status': {}, 'storage-clear': { hidden: true } };
-  context.markEdited = () => {};
+  context.ui = { 'storage-status': {}, 'storage-clear': { hidden: true }, 'demo-label': {} };
   context.window = { localStorage: {
     getItem: key => storage.get(key) ?? null,
     setItem: (key, value) => {
@@ -174,8 +176,8 @@ function storageSubject(storage = new Map(), failWrites = false) {
     },
   } };
   const declarations = ['storageKey', 'savedConfigKeys'].map(name => source.match(new RegExp('^      const ' + name + ' = .+;$', 'm'))[0]);
-  const functions = ['storedPlan', 'validStoredPlan', 'applyStoredPlan', 'loadPlan', 'savePlan'];
-  vm.runInContext([...declarations, 'let savedSnapshot = null; let storageBlocked = false;', ...functions.map(pageFunction), 'globalThis.storageSubject = { ' + functions.join(', ') + ' };'].join('\n'), context);
+  const functions = ['storedPlan', 'validStoredPlan', 'applyStoredPlan', 'loadPlan', 'savePlan', 'markEdited'];
+  vm.runInContext([...declarations, 'let savedSnapshot = null; let storageBlocked = false; let hasUserPlan = ' + edited + ';', ...functions.map(pageFunction), 'globalThis.storageSubject = { ' + functions.join(', ') + ' };'].join('\n'), context);
   return { ...context.storageSubject, context, storage };
 }
 
@@ -235,4 +237,107 @@ test('a second tab cannot silently overwrite a newer saved plan', () => {
   second.savePlan();
   assert.equal([...first.storage.values()][0], newer);
   assert.match(second.context.ui['storage-status'].textContent, /innej karcie/);
+});
+
+test('an early first salary includes same-day and following-day bonuses exactly once', () => {
+  const app = subject();
+  for (const pay of app.context.paychecks) pay.date = app.defaultPayDate(pay.index);
+  app.context.paychecks[1].date = '2026-01-30';
+  app.context.bonuses.push(
+    { amount: 200000, date: '2026-01-30', link: null, optional: false },
+    { amount: 300000, date: '2026-01-31', link: null, optional: false },
+  );
+  const timeline = app.payrollTimeline();
+  const periods = app.collectPeriods(1, 11);
+  const [sameDay, nextDay] = timeline.separate;
+  assert.equal(periods[0].sameDay, sameDay.amount);
+  assert.equal(periods[0].later, nextDay.amount);
+  assert.equal(periods[0].earlier, 0);
+  assert.equal(periods[0].received, timeline.pays[1].receivedTransfer + sameDay.amount + nextDay.amount);
+  assert.equal(periods.slice(1).reduce((sum, row) => sum + row.separateGross, 0), 0);
+  for (const mode of ['salary', 'bonus', 'both']) {
+    const run = app.simulate(periods, 0, 0, 0, mode);
+    assert.equal(run.failure, null);
+    assert.equal(run.closing + run.outside, periods.reduce((sum, row) => sum + row.received, 0));
+  }
+});
+
+test('invalid inactive KZP values do not block saving unrelated changes', () => {
+  const app = storageSubject();
+  app.context.config['kzp-savings'].value = '-200';
+  app.context.config['kzp-debt'].value = '-1000';
+  app.savePlan();
+  app.context.salaryChanges.set(6, 1600000);
+  app.context.config.manual.value = '7000';
+  app.savePlan();
+  assert.equal(app.storage.size, 1);
+  const restored = storageSubject(app.storage, false, false);
+  restored.loadPlan();
+  assert.equal(restored.context.paychecks[6].gross, 1600000);
+  assert.equal(restored.context.config.manual.value, '7000');
+  assert.equal(restored.context.config['kzp-enabled'].checked, false);
+});
+
+test('browsing sample months does not create a saved user plan', () => {
+  const app = storageSubject(new Map(), false, false);
+  app.context.chosen = 8;
+  app.savePlan();
+  assert.equal(app.storage.size, 0);
+  app.markEdited();
+  app.savePlan();
+  assert.equal(app.storage.size, 1);
+});
+
+test('enabling KZP identifies an invalid field instead of reporting a generic storage error', () => {
+  const app = storageSubject();
+  app.savePlan();
+  const saved = [...app.storage.values()][0];
+  app.context.config['kzp-savings'].value = '-200';
+  app.context.config['kzp-enabled'].checked = true;
+  const error = app.context.subject.kzpInputError();
+  assert.equal(error.key, 'kzp-savings');
+  assert.match(error.message, /Wkład miesięczny/);
+  app.savePlan();
+  assert.equal([...app.storage.values()][0], saved);
+  assert.match(app.context.ui['storage-status'].textContent, /Wkład miesięczny/);
+});
+
+// Fixed, independently calculated PLN fixtures: KUP 250, PIT reduction 300,
+// no PPK/PPE, no voluntary deductions. Expectations never call payroll helpers.
+for (const fixture of [
+  { name: '10,000 gross below the PIT threshold', gross: 1000000, income: 0, pension: 0, contributions: 214761, tax: 70500, net: 714739 },
+  { name: '10,000 gross crossing the PIT threshold from 115,000 income', gross: 1000000, income: 11500000, pension: 0, contributions: 214761, tax: 138100, net: 647139 },
+  { name: '10,000 gross wholly in the 32 percent bracket', gross: 1000000, income: 15000000, pension: 0, contributions: 214761, tax: 238100, net: 547139 },
+  { name: '10,000 gross reaching the 2026 pension cap exactly', gross: 1000000, income: 15000000, pension: 27260000, contributions: 214761, tax: 238100, net: 547139 },
+  { name: '10,000 gross crossing the 2026 pension cap from 280,000', gross: 1000000, income: 15000000, pension: 28000000, contributions: 138936, tax: 264800, net: 596264 },
+  { name: '10,000 gross after the 2026 pension cap, sickness remains', gross: 1000000, income: 15000000, pension: 28260000, contributions: 112295, tax: 274200, net: 613505 },
+]) {
+  test('payroll anchor: ' + fixture.name, () => {
+    const { contributions, tax } = subject().monthPayroll(fixture.gross, fixture.income, fixture.pension, 2026);
+    assert.equal(contributions, fixture.contributions);
+    assert.equal(tax, fixture.tax);
+    assert.equal(fixture.gross - contributions - tax, fixture.net);
+  });
+}
+
+test('payroll anchor: two 5,000 gross transfers share monthly PIT and contribution calculations', () => {
+  const app = subject();
+  app.context.paychecks[0].gross = 500000;
+  app.context.paychecks[0].date = '2026-01-15';
+  app.context.bonuses.push({ amount: 500000, date: '2026-01-20', link: null, optional: false });
+  const { pays, separate } = app.payrollTimeline();
+  assert.equal(pays[0].receivedTransfer, 373819);
+  assert.equal(separate[0].amount, 340920);
+  assert.equal(pays[0].receivedTransfer + separate[0].amount, 714739);
+  assert.equal(pays[0].tax + separate[0].tax, 70500);
+  assert.equal(pays[0].contributions + separate[0].contributions, 214761);
+});
+
+test('payroll anchor: the January tax counters restart across years', () => {
+  const app = subject();
+  const { pays } = app.payrollTimeline();
+  assert.equal(pays[0].receivedTransfer, 1021497);
+  assert.equal(pays[12].receivedTransfer, 1021497);
+  assert.equal(pays[0].tax, 117100);
+  assert.equal(pays[12].tax, 117100);
 });
