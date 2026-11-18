@@ -1,12 +1,24 @@
 # Kalkulator wypłat
 
-Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.6.1.
+Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.7.0.
 
 [Kalkulator na GitHub Pages](https://thresholdops.github.io/kalkulator-wyplat/)
 
 Otwórz `index.html` w przeglądarce, aby użyć kalkulatora lokalnie. Cała aplikacja mieści się w tym pliku, a obliczenia wykonują się w przeglądarce. Kwoty pokazane na starcie są przykładowe. Wyniki mają charakter szacunkowy, a przyjęte założenia znajdziesz pod wynikiem.
 
 Plan zapisuje się automatycznie w tej przeglądarce na tym urządzeniu i wraca po odświeżeniu strony. Zapis obejmuje wynagrodzenie i jego zmiany, premie, potrącenia, KZP oraz ustawienia budżetu i rezerwy. Przycisk „Usuń zapisany plan” pozwala wrócić do danych przykładowych.
+
+Wersja 0.7.0 dodaje opcjonalne moduły PPK i PPE w zakładce „Potrącenia”. Wpłaty pracownika pomniejszają przelew po naliczeniu podatku. Wpłaty pracodawcy zwiększają dochód i licznik PIT, ale nie gotówkę ani podstawy składek społecznych i zdrowotnej. Oba programy są domyślnie wyłączone.
+
+PPK liczymy od pensji oraz premii i nagród objętych składkami w tej aplikacji, również po przekroczeniu limitu 30-krotności. Obsługiwany jest standardowy wariant: pracownik 2% plus do 2% dodatkowo, firma 1,5% plus do 2,5% dodatkowo. Obniżona wpłata podstawowa pracownika nie jest obsługiwana. PPE pozwala określić własną wpłatę i wpłatę firmy jako kwotę miesięczną albo procent podstawy. Wpłatę firmy trzeba podać; puste pole nie oznacza zera. Weryfikujemy ograniczenie 7% dla składki podstawowej pracodawcy. Stałą kwotę miesięczną pobieramy raz, także przy kilku przelewach. Własne wpłaty PPE zatrzymują się na rocznym limicie: 42 390 zł w 2026 r.; na 2027 r. przyjęto 45 148,50 zł, wyliczone jako 4,5 × prognozowane miesięczne wynagrodzenie 10 033 zł. Wartość 2027 jest parametrem prognozy wyprowadzonym z tej reguły, a nie odrębnie zweryfikowanym obwieszczeniem PPE na 2027 r.
+
+Dla każdego programu wybiera się miesiące uczestnictwa oraz miesiąc rozliczenia wpłaty firmy: bieżący albo następny. To założenie prognozy terminu faktycznego przekazania środków, nie swobodny wybór prawnego momentu przychodu. Zakładamy, że przekazanie nastąpi przed wypłatą rozliczającą PIT w tym miesiącu. Nie odtwarzamy kolejności przekazania środków po ostatniej wypłacie miesiąca. Wpłata rozliczana w styczniu wchodzi do nowego roku PIT; dla programu trwającego przed 2026 r. przy trybie „następny miesiąc” wymagamy kwoty wpłaty z 2025 r. do rozliczenia w styczniu, także gdy wynosi ona 0 zł. Dochód w miesiącu bez wypłaty pieniężnej nie tworzy ujemnego przelewu; niepobraną zaliczkę ujawniamy w założeniach jako kwotę do rozliczenia rocznego. Wpłaty pozostające do rozliczenia po 2027 r. również są pokazane osobno.
+
+Dotychczasowe pozycje „PPK pracownika” i „PPE pracownika” na liście potrąceń pozostają zapisane i edytowalne, lecz moduł zastępuje je w miesiącach swojego działania. Poza tym zakresem nadal działają. Ręcznie podanej rzeczywistej kwoty przelewu nie pomniejszamy ponownie. Starszy zapis bez wszystkich nowych pól jest uzupełniany domyślnymi ustawieniami wyłączonych modułów; niekompletny nowy zapis jest odrzucany.
+
+Kotwice PPK/PPE dla 10 000 zł brutto, pełnych składek, KUP 250 zł i pomniejszenia PIT 300 zł, poniżej progu: standardowe PPK daje składki 2 147,61 zł, PIT 723 zł, własną wpłatę 200 zł i przelew 6 929,39 zł. PPE przy własnej wpłacie 250 zł oraz wpłacie firmy 7% daje PIT 789 zł i przelew 6 813,39 zł. Oba programy razem dają PIT 807 zł, własne wpłaty 450 zł i przelew 6 595,39 zł. Stawka PPE 7% jest przykładem testowym, a nie domyślną stawką firmy użytkownika.
+
+Źródła reguł PPK/PPE: [stawki PPK — oficjalny portal](https://www.mojeppk.pl/dla-pracownika/artykul.html), [moment powstania przychodu i pobrania zaliczki PPK](https://www.mojeppk.pl/aktualnosci/Ekspert_PPK_radzi__Kiedy_pobrac_zaliczke_na_podatek_dochodowy_od_wplat_do_PPK_finansowanych_przez_pracodawce.html), [ustawa o PPE, art. 24–25](https://eli.gov.pl/api/acts/DU/2023/710/text.html), [limit dodatkowych składek PPE 2026 — MRPiPS](https://www.gov.pl/web/rodzina/ppe-pracownicze-programy-emerytalne). Testy obejmują 74 przypadki, w tym stałe kwoty naliczeń, premie przy pensji i osobno, oba warianty PIT 2027, limity, przełom lat, początkową wpłatę z 2025 r., zastępowanie starych potrąceń i zgodność zapisu.
 
 Testy regresyjne: `node --test tests/regressions.cjs` (Node.js, bez dodatkowych zależności).
 
