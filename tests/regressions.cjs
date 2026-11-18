@@ -302,6 +302,18 @@ test('enabling KZP identifies an invalid field instead of reporting a generic st
   assert.match(app.context.ui['storage-status'].textContent, /Wkład miesięczny/);
 });
 
+test('returning to the saved valid settings clears an obsolete KZP warning', () => {
+  const app = storageSubject();
+  app.context.config['kzp-savings'].value = '-200';
+  app.savePlan();
+  app.context.config['kzp-enabled'].checked = true;
+  app.savePlan();
+  assert.match(app.context.ui['storage-status'].textContent, /Wkład miesięczny/);
+  app.context.config['kzp-enabled'].checked = false;
+  app.savePlan();
+  assert.match(app.context.ui['storage-status'].textContent, /Zapisano plan/);
+});
+
 // Fixed, independently calculated PLN fixtures: KUP 250, PIT reduction 300,
 // no PPK/PPE, no voluntary deductions. Expectations never call payroll helpers.
 for (const fixture of [
