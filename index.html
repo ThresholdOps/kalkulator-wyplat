@@ -1737,12 +1737,15 @@
       for (const key of ['source', 'initial', 'confirmed', 'floor', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027']) {
         config[key].addEventListener('change', refresh);
       }
-      for (const key of Object.keys(pensionDefaults)) config[key].addEventListener('change', () => {
-        const kind = key.slice(0, 3);
-        if (key.endsWith('-start') && count(kind + '-start') > count(kind + '-end')) config[kind + '-end'].value = value(kind + '-start');
-        if (key.endsWith('-end') && count(kind + '-end') < count(kind + '-start')) config[kind + '-start'].value = value(kind + '-end');
-        refresh();
-      });
+      for (const key of Object.keys(pensionDefaults)) {
+        config[key].addEventListener('change', () => {
+          const kind = key.slice(0, 3);
+          if (key.endsWith('-start') && count(kind + '-start') > count(kind + '-end')) config[kind + '-end'].value = value(kind + '-start');
+          if (key.endsWith('-end') && count(kind + '-end') < count(kind + '-start')) config[kind + '-start'].value = value(kind + '-end');
+          refresh();
+        });
+        if (config[key].type === 'number') config[key].addEventListener('input', refresh);
+      }
       for (const goal of goals) goal.addEventListener('change', refresh);
       config.manual.addEventListener('input', refresh);
       monthPicker.addEventListener('change', () => {
