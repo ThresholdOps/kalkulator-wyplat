@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.5.1">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.6.0">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -313,11 +313,13 @@
           <label class="pay-field">Pierwsza pensja w planie<select data-config="start"></select></label>
           <label class="pay-field">Ostatnia pensja w planie<select data-config="end"></select></label>
           <label class="pay-field">Co zasila rezerwę?<select data-config="source"><option value="both">Nadwyżki z pensji oraz premie</option><option value="salary">Nadwyżki z pensji</option><option value="bonus">Premie i dodatki</option></select></label>
+          <label class="pay-field">Skala PIT w 2027 r.<select data-config="tax-2027" aria-describedby="payday-v4-tax-2027-note"><option value="current">Jak w 2026 r. — 12% / 32%</option><option value="draft3293">Wariant 3293 — 12% / 24% / 32% (symulacja)</option></select></label>
           <label class="pay-field">Planowana rezerwa na początek planu (zł)<input type="number" min="0" max="10000000" step="0.01" value="0" data-config="initial"></label>
           <label class="pay-field">Potwierdzona rezerwa na początek planu (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Wpisz, jeśli znasz" data-config="confirmed"></label>
           <label class="pay-field">Wymagana rezerwa na koniec (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Jak na początku planu" data-config="floor"></label>
           <label class="pay-check"><input type="checkbox" data-config="optional" checked> Uwzględnij opcjonalne wypłaty</label>
         </div>
+        <p class="pay-hint" id="payday-v4-tax-2027-note" data-pay="tax-2027-note"></p>
         <p class="pay-hint" data-pay="plan-start"></p>
       </div>
 
@@ -432,7 +434,7 @@
         </details>
         <details class="pay-breakdown">
           <summary>Założenia szacunku</summary>
-          <p class="pay-hint" style="margin-top: 7px">Umowa o pracę u jednego pracodawcy, standardowe koszty uzyskania i 300 zł miesięcznego pomniejszenia zaliczki. Dla PIT 2027 przyjęto kontynuację skali 2026. Wpłaty PPK i PPE wpisane w Potrąceniach obniżają wypłatę o część pracownika.</p>
+          <p class="pay-hint" style="margin-top: 7px" data-pay="tax-assumptions"></p>
           <p class="pay-hint" style="margin-top: 6px">Ulgi indywidualne i wpłaty pracodawcy na PPK lub PPE mogą zmienić wynik.</p>
         </details>
       </section>
@@ -577,7 +579,7 @@
       const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
       const storageKey = 'kalkulator-wyplat.plan.v1';
       const initialPaychecks = paychecks.map(pay => ({ ...pay }));
-      const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate'];
+      const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027'];
       let savedSnapshot = null;
       let storageBlocked = false;
       let hasUserPlan = false;
@@ -639,7 +641,8 @@
         if (!data.bonuses.every(row => row && ['award', 'monthly', 'quarterly', 'annual', 'art32', 'holiday'].includes(row.type) && text(row.name, 100) && amount(row.amount) && row.amount > 0 && typeof row.optional === 'boolean' && (row.link == null ? date(row.date) : monthIndex(row.link)))) return false;
         if (!Array.isArray(data.deductions) || data.deductions.length > 1000) return false;
         if (!data.deductions.every(row => row && text(row.name, 54) && row.name.trim() && text(row.kind, 100) && amount(row.amount) && row.amount > 0 && typeof row.percent === 'boolean' && (!row.percent || row.amount <= 10000) && monthIndex(row.start) && monthIndex(row.end) && row.end >= row.start && text(row.endInput, 2) && (row.frequency === 'once' || row.endInput === '' || Number(row.endInput) === row.end) && ['monthly', 'annual', 'once'].includes(row.frequency) && row.interval === (row.frequency === 'annual' ? 12 : 1))) return false;
-        if (!data.config || !savedConfigKeys.every(key => config[key].type === 'checkbox' ? typeof data.config[key] === 'boolean' : text(data.config[key], 40))) return false;
+        if (!data.config || !savedConfigKeys.every(key => key === 'tax-2027' && data.config[key] === undefined ? true : config[key].type === 'checkbox' ? typeof data.config[key] === 'boolean' : text(data.config[key], 40))) return false;
+        if (data.config['tax-2027'] !== undefined && !['current', 'draft3293'].includes(data.config['tax-2027'])) return false;
         if (!['start', 'end', 'kzp-start'].every(key => monthIndex(Number(data.config[key])))) return false;
         if (Number(data.config.start) > Number(data.config.end) || !['both', 'salary', 'bonus'].includes(data.config.source)) return false;
         const activeAmounts = ['initial', 'confirmed', 'floor', ...(data.config['kzp-enabled'] ? ['kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate'] : [])];
@@ -662,7 +665,7 @@
         deductions.splice(0, deductions.length, ...data.deductions);
         for (const key of savedConfigKeys) {
           if (config[key].type === 'checkbox') config[key].checked = data.config[key];
-          else config[key].value = data.config[key];
+          else config[key].value = key === 'tax-2027' && data.config[key] === undefined ? 'current' : data.config[key];
         }
         for (const goal of goals) goal.checked = goal.value === data.goal;
         chosen = data.chosen;
@@ -800,10 +803,28 @@
       const pensionLimits = { 2026: 28260000, 2027: 30099000 };
       const roundRate = (amount, basisPoints) => Math.floor((amount * basisPoints + 5000) / 10000);
       const wholeZloty = amount => Math.floor((amount + 50) / 100) * 100;
+      const taxScales = { current: [[12000000, 1200], [null, 3200]], draft3293: [[13000000, 1200], [15000000, 2400], [null, 3200]] };
 
       function progressiveTax(base, priorIncome, threshold, lowRate) {
         const low = Math.min(base, Math.max(0, threshold - priorIncome));
         return roundRate(low, lowRate) + roundRate(base - low, 3200);
+      }
+
+      function taxForScale(base, priorIncome, brackets) {
+        let allocated = 0;
+        let tax = 0;
+        for (const [upper, rate] of brackets) {
+          const portion = upper == null ? base - allocated : Math.min(base - allocated, Math.max(0, upper - priorIncome - allocated));
+          tax += roundRate(portion, rate);
+          allocated += portion;
+        }
+        return tax;
+      }
+
+      function tax2027Description() {
+        return value('tax-2027') === 'draft3293'
+          ? 'PIT 2027: wariant 3293 (symulacja) — 12% do 130 000 zł, 24% od nadwyżki do 150 000 zł, 32% od nadwyżki ponad 150 000 zł.'
+          : 'PIT 2027: jak w 2026 r. — 12% do 120 000 zł i 32% od nadwyżki. Kontynuacja zasad przyjęta do prognozy.';
       }
 
       function monthPayroll(gross, annualIncome, annualPensionBase, year) {
@@ -812,7 +833,8 @@
         const afterSocial = gross - social;
         const income = Math.max(0, afterSocial - 25000);
         const taxableBase = wholeZloty(income);
-        const tax = wholeZloty(Math.max(0, progressiveTax(taxableBase, annualIncome, 12000000, 1200) - 30000));
+        const brackets = year === 2027 && value('tax-2027') === 'draft3293' ? taxScales.draft3293 : taxScales.current;
+        const tax = wholeZloty(Math.max(0, taxForScale(taxableBase, annualIncome, brackets) - 30000));
         const oldReduction = annualIncome < 8552800 ? 4376 : 0;
         const oldAdvance = Math.max(0, progressiveTax(taxableBase, annualIncome, 8552800, 1700) - oldReduction);
         const health = Math.min(roundRate(afterSocial, 900), oldAdvance);
@@ -1375,6 +1397,9 @@
         plan = calculatePlan();
         const first = plan.periods[0];
         const last = plan.periods.at(-1);
+        const taxDescription = tax2027Description();
+        fields['tax-2027-note'].textContent = taxDescription + ' Wybór dotyczy dat wypłat w 2027 r. Wypłaty z datą w 2026 r. zachowują swoją skalę.';
+        fields['tax-assumptions'].textContent = 'Umowa o pracę u jednego pracodawcy, standardowe koszty uzyskania i 300 zł miesięcznego pomniejszenia zaliczki. ' + taxDescription + ' Wpłaty PPK i PPE wpisane w Potrąceniach obniżają wypłatę o część pracownika.';
         fields['plan-start'].textContent = 'Początek planu: ' + shortDate(planStartDate(first)) + '. Podaj rezerwę sprzed wpływów tego dnia. Wcześniejsza pensja przesuwa początek planu przed wybrany miesiąc.';
         const kzpIssue = kzpInputError();
         ui['kzp-feedback'].hidden = !kzpIssue;
@@ -1403,7 +1428,8 @@
         else fields['target-note'].textContent = value('confirmed') !== '' ? 'Plan od potwierdzonej rezerwy początkowej' : 'Tyle do dyspozycji co miesiąc w tym planie';
         fields['limit-month'].hidden = off || !plan.limit;
         if (plan.limit) fields['limit-month'].textContent = plan.limit.index == null ? 'Wymagana rezerwa na koniec planu wyznacza limit.' : paychecks[plan.limit.index].label + ' wyznacza limit. Przy wyższej kwocie w tym okresie zabrakłoby środków.';
-        fields['table-caption'].textContent = (config.optional.checked ? 'Z opcjonalnymi wpływami' : 'Bez opcjonalnych wpływów') + ' · od pensji do pensji';
+        const taxCaption = value('tax-2027') === 'draft3293' ? 'PIT 2027: 12% / 24% / 32% (wariant 3293, symulacja)' : 'PIT 2027: jak w 2026 r. (12% / 32%)';
+        fields['table-caption'].textContent = (config.optional.checked ? 'Z opcjonalnymi wpływami' : 'Bez opcjonalnych wpływów') + ' · od pensji do pensji' + (plan.periods.some(row => row.year === 2027 || row.date.startsWith('2027-')) ? ' · ' + taxCaption : '');
 
         renderChart();
         renderTable();
@@ -1426,7 +1452,7 @@
         if (count('end') < count('start')) config.start.value = config.end.value;
         refresh();
       });
-      for (const key of ['source', 'initial', 'confirmed', 'floor', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate']) {
+      for (const key of ['source', 'initial', 'confirmed', 'floor', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027']) {
         config[key].addEventListener('change', refresh);
       }
       for (const goal of goals) goal.addEventListener('change', refresh);
