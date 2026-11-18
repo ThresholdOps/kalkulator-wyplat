@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.6.0">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.6.1">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -152,6 +152,10 @@
     #payday-v4-plan-screen .pay-target-line { position: absolute; left: 0; right: 0; bottom: var(--target-height); border-top: 2px dashed var(--target); pointer-events: none; z-index: 1; }
     #payday-v4-plan-screen .pay-ticks { grid-column: 2; padding-top: 6px; text-align: center; color: var(--muted); font-size: 11px; }
     #payday-v4-plan-screen .pay-ticks [data-selected='true'] { color: var(--ink); font-weight: 730; text-decoration: underline; text-underline-offset: 3px; }
+    #payday-v4-plan-screen .pay-ticks[data-dense='true'] span:not([data-quarter]) { visibility: hidden; }
+    #payday-v4-plan-screen .pay-years { grid-column: 2; display: grid; margin-top: 7px; color: var(--muted); font-size: 11px; text-align: center; }
+    #payday-v4-plan-screen .pay-years span { border-top: 1px solid var(--border); padding-top: 4px; }
+    #payday-v4-plan-screen .pay-years span + span { border-inline-start: 1px solid var(--border); }
     #payday-v4-plan-screen .pay-limit { margin-top: 16px; padding-top: 11px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
     #payday-v4-plan-screen .pay-limit strong { color: var(--ink); font-weight: 650; }
     #payday-v4-plan-screen .pay-reserve .pay-action { margin-top: 14px; padding: 11px 13px; border-radius: 9px; background: var(--soft); }
@@ -244,6 +248,15 @@
       #payday-v4-plan-screen .pay-reserve { order: -1; }
       #payday-v4-plan-screen .pay-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    @media (max-width: 640px) {
+      #payday-v4-plan-screen .pay-month-table { display: block; min-width: 0; }
+      #payday-v4-plan-screen .pay-month-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      #payday-v4-plan-screen .pay-month-table :is(tbody, tfoot) { display: block; }
+      #payday-v4-plan-screen .pay-month-table :is(tbody, tfoot) tr { display: block; border: 1px solid var(--border); border-radius: 9px; margin-bottom: 10px; padding: 5px 10px; }
+      #payday-v4-plan-screen .pay-month-table :is(tbody, tfoot) th { display: block; padding: 5px 0; border-bottom: 1px solid var(--border); }
+      #payday-v4-plan-screen .pay-month-table :is(tbody, tfoot) td { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 0; overflow-wrap: anywhere; }
+      #payday-v4-plan-screen .pay-month-table td::before { content: attr(data-label); text-align: start; color: var(--muted); font-size: 12px; font-weight: 400; }
+    }
     @media (max-width: 560px) {
       #payday-v4-plan-screen .pay-main { padding-top: 22px; }
       #payday-v4-plan-screen .pay-intro { align-items: stretch; flex-direction: column; gap: 14px; margin-bottom: 16px; }
@@ -313,7 +326,7 @@
           <label class="pay-field">Pierwsza pensja w planie<select data-config="start"></select></label>
           <label class="pay-field">Ostatnia pensja w planie<select data-config="end"></select></label>
           <label class="pay-field">Co zasila rezerwę?<select data-config="source"><option value="both">Nadwyżki z pensji oraz premie</option><option value="salary">Nadwyżki z pensji</option><option value="bonus">Premie i dodatki</option></select></label>
-          <label class="pay-field">Skala PIT w 2027 r.<select data-config="tax-2027" aria-describedby="payday-v4-tax-2027-note"><option value="current">Jak w 2026 r. — 12% / 32%</option><option value="draft3293">Wariant 3293 — 12% / 24% / 32% (symulacja)</option></select></label>
+          <label class="pay-field">Skala PIT w 2027 r.<select data-config="tax-2027" aria-describedby="payday-v4-tax-2027-note"><option value="current">Jak w 2026 r.</option><option value="draft3293">3293 — symulacja</option></select></label>
           <label class="pay-field">Planowana rezerwa na początek planu (zł)<input type="number" min="0" max="10000000" step="0.01" value="0" data-config="initial"></label>
           <label class="pay-field">Potwierdzona rezerwa na początek planu (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Wpisz, jeśli znasz" data-config="confirmed"></label>
           <label class="pay-field">Wymagana rezerwa na koniec (zł)<input type="number" min="0" max="10000000" step="0.01" placeholder="Jak na początku planu" data-config="floor"></label>
@@ -456,6 +469,7 @@
           <div class="pay-axis" aria-hidden="true"><span style="bottom: 100%" data-pay="axis-top">10 tys. zł</span><span style="bottom: 50%" data-pay="axis-mid">5 tys. zł</span><span style="bottom: 0">0 zł</span></div>
           <div class="pay-plot"><div class="pay-target-line" data-ui="target-line" aria-hidden="true"></div><div class="pay-bars"></div></div>
           <div class="pay-ticks" aria-hidden="true"></div>
+          <div class="pay-years" aria-hidden="true"></div>
         </figure>
         <p class="pay-limit" data-pay="limit-month" hidden></p>
       </section>
@@ -501,10 +515,12 @@
       const goals = Array.from(root.querySelectorAll('[name="payday-v4-goal"]'));
       const bars = root.querySelector('.pay-bars');
       const ticks = root.querySelector('.pay-ticks');
+      const years = root.querySelector('.pay-years');
       const plot = root.querySelector('.pay-plot');
       const settings = root.querySelector('#payday-v4-settings');
       const monthNames = Array.from(monthPicker.options, option => option.textContent);
       const monthLabels = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+      const monthGenitives = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
       const amountFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const numberFormat = new Intl.NumberFormat('pl-PL', { useGrouping: 'always', maximumFractionDigits: 2 });
       const dateFormat = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeZone: 'UTC' });
@@ -574,7 +590,6 @@
       const salaryChanges = new Map([[0, paychecks[0].gross]]);
       let chosen = 5;
       let plan = null;
-      let displayedYear = null;
       const editing = { bonus: null, deduction: null };
       const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
       const storageKey = 'kalkulator-wyplat.plan.v1';
@@ -1023,7 +1038,7 @@
         ui['payroll-month'].textContent = pay.label;
         config['pay-date'].value = pay.date;
         config['pay-reason'].value = pay.reason;
-        config['pay-net'].value = pay.enteredNet == null ? '' : pay.enteredNet / 100;
+        config['pay-net'].value = pay.enteredNet == null ? '' : inZloty(pay.enteredNet);
         ui['correction-feedback'].textContent = '';
         showCorrectionFields();
       }
@@ -1055,7 +1070,7 @@
         }
         markEdited();
         refresh();
-        feedback('pay', 'Zapisano wynagrodzenie od ' + paychecks[from].label + '.');
+        feedback('pay', 'Zapisano wynagrodzenie od ' + monthWithYear(paychecks[from]) + '.');
       });
 
       config['pay-date'].addEventListener('change', showCorrectionFields);
@@ -1093,12 +1108,19 @@
         ui['demo-label'].textContent = 'Szacunkowy plan';
       }
 
-      const monthPeriods = [[0, 'Grudzień 2025'], ...monthOptions.map(([index, label]) => [index + 1, label])];
-      const quarterPeriods = [[1, 'IV kwartał 2025'], ...Array.from({ length: 8 }, (_, index) => [4 + index * 3, ['I', 'II', 'III', 'IV'][index % 4] + ' kwartał ' + (2026 + Math.floor(index / 4))])];
+      function monthWithYear(pay) {
+        return monthGenitives[pay.month] + ' ' + pay.year;
+      }
+
+      function availableBonusPeriods(type) {
+        const monthly = [[0, 'Grudzień 2025'], ...paychecks.map(pay => [pay.index + 1, pay.label])];
+        const quarterly = [[1, 'IV kwartał 2025'], ...Array.from({ length: 8 }, (_, index) => [4 + index * 3, ['I', 'II', 'III', 'IV'][index % 4] + ' kwartał ' + (2026 + Math.floor(index / 4))])];
+        return (type === 'monthly' ? monthly : quarterly).filter(([index]) => paychecks[index]);
+      }
       function showBonusFields(resetPeriod = false) {
         const type = value('bonus-type');
         const fixed = type === 'monthly' || type === 'quarterly';
-        if (fixed && resetPeriod) options(config['bonus-period'], type === 'monthly' ? monthPeriods : quarterPeriods);
+        if (fixed && resetPeriod) options(config['bonus-period'], availableBonusPeriods(type));
         config['bonus-timing'].disabled = fixed;
         if (fixed) config['bonus-timing'].value = 'salary';
         const tied = value('bonus-timing') === 'salary';
@@ -1276,15 +1298,32 @@
         }));
       }
 
+      function chartYears(periods) {
+        const groups = [];
+        for (const [index, row] of periods.entries()) {
+          const last = groups.at(-1);
+          if (last?.year === row.year) last.count++;
+          else groups.push({ year: row.year, start: index, count: 1 });
+        }
+        return groups;
+      }
+
       function renderChart() {
-        displayedYear = paychecks[chosen].year;
-        fields['chart-title'].textContent = 'Wypłaty w ' + displayedYear + ' r.';
-        const subset = plan.periods.filter(row => row.year === displayedYear);
+        const subset = plan.periods;
+        const firstYear = subset[0].year;
+        const lastYear = subset.at(-1).year;
+        fields['chart-title'].textContent = firstYear === lastYear ? 'Wypłaty w ' + firstYear + ' r.' : 'Wypłaty w całym planie · ' + firstYear + '–' + lastYear;
         const ceiling = Math.max(200000, Math.ceil(Math.max(plan.target ?? 0, ...subset.map(row => row.received ?? 0)) / 200000) * 200000);
         fields['axis-top'].textContent = numberFormat.format(ceiling / 100000) + ' tys. zł';
         fields['axis-mid'].textContent = numberFormat.format(ceiling / 200000) + ' tys. zł';
         plot.style.setProperty('--target-height', `${(plan.target ?? 0) / ceiling * 100}%`);
-        bars.style.gridTemplateColumns = ticks.style.gridTemplateColumns = 'repeat(' + subset.length + ', minmax(0, 1fr))';
+        bars.style.gridTemplateColumns = ticks.style.gridTemplateColumns = years.style.gridTemplateColumns = 'repeat(' + subset.length + ', minmax(0, 1fr))';
+        ticks.dataset.dense = String(subset.length > 12);
+        years.replaceChildren(...chartYears(subset).map(group => {
+          const label = create('span', String(group.year));
+          label.style.gridColumn = (group.start + 1) + ' / span ' + group.count;
+          return label;
+        }));
         bars.replaceChildren();
         ticks.replaceChildren();
         subset.forEach((row, ordinal) => {
@@ -1301,7 +1340,7 @@
           bars.append(item);
           const tick = create('span', monthLabels[row.month]);
           tick.dataset.month = String(row.index);
-          if (ordinal % Math.ceil(subset.length / 4) === 0) tick.setAttribute('data-quarter', '');
+          if (ordinal === 0 || row.month % 3 === 0) tick.setAttribute('data-quarter', '');
           ticks.append(tick);
         });
       }
@@ -1309,7 +1348,16 @@
       function renderTable() {
         const hideReserve = plan.mode === 'off';
         for (const key of ['target', 'change', 'balance']) ui['table-' + key + '-heading'].hidden = hideReserve;
-        const displayedMoney = (value, className) => create('td', money(value), className);
+        const displayedMoney = (value, label) => {
+          const cell = create('td', money(value));
+          cell.dataset.label = label;
+          return cell;
+        };
+        const changeCell = (value, tone) => {
+          const cell = create('td', delta(value), tone);
+          cell.dataset.label = 'Zmiana rezerwy';
+          return cell;
+        };
         ui['table-body'].replaceChildren(...plan.periods.map(row => {
           const tableRow = create('tr');
           tableRow.dataset.month = String(row.index);
@@ -1319,12 +1367,12 @@
           button.type = 'button';
           button.addEventListener('click', () => selectMonth(row.index));
           heading.append(button);
-          tableRow.append(heading, displayedMoney(row.received));
+          tableRow.append(heading, displayedMoney(row.received, 'Na konto'));
           if (!hideReserve) {
             const balance = plan.projection?.balances.get(row.index);
             const change = balance?.forPeriod;
             const tone = change > 0 ? 'pay-up' : change < 0 ? 'pay-down' : '';
-            tableRow.append(displayedMoney(balance ? plan.target : null), create('td', delta(change), tone), displayedMoney(balance?.atEnd));
+            tableRow.append(displayedMoney(balance ? plan.target : null, 'Po wyrównaniu'), changeCell(change, tone), displayedMoney(balance?.atEnd, 'Rezerwa na koniec okresu'));
           }
           return tableRow;
         }));
@@ -1333,12 +1381,12 @@
         const heading = create('th', 'Cały plan');
         heading.scope = 'row';
         const paid = plan.periods.some(row => row.received == null) ? null : plan.periods.reduce((sum, row) => sum + row.received, 0);
-        totalRow.append(heading, displayedMoney(paid));
+        totalRow.append(heading, displayedMoney(paid, 'Na konto'));
         if (!hideReserve) {
           const projection = plan.projection;
           const closed = projection && !projection.failure;
           const change = closed ? projection.closing - projection.opening : null;
-          totalRow.append(displayedMoney(closed ? plan.target * plan.periods.length : null), create('td', delta(change)), displayedMoney(projection?.closing));
+          totalRow.append(displayedMoney(closed ? plan.target * plan.periods.length : null, 'Po wyrównaniu'), changeCell(change), displayedMoney(projection?.closing, 'Rezerwa na koniec okresu'));
         }
         ui['table-foot'].replaceChildren(totalRow);
         const earlyIncome = plan.periods[0].earlier;
@@ -1351,7 +1399,6 @@
       function selectMonth(index, persist = true) {
         chosen = index;
         const row = plan.periods.find(pay => pay.index === index);
-        if (displayedYear !== row.year) renderChart();
         monthPicker.value = String(index);
         fields.net.textContent = row.received == null ? '—' : inZloty(row.received);
         ui['net-unit'].hidden = row.received == null;
@@ -1435,7 +1482,7 @@
         renderTable();
         selectMonth(chosen, false);
         renderList('bonus', bonuses, bonus => bonus.name + ' · ' + money(bonus.amount) + ' brutto · ' + shortDate(bonus.link == null ? bonus.date : paychecks[bonus.link].date) + (bonus.optional ? ' · niepewna' : ''), startBonusEdit);
-        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? formatPercent(deduction.amount) : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + paychecks[deduction.start].label + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + paychecks[deduction.end].label : ''), startDeductionEdit);
+        renderList('deduction', deductions, deduction => deduction.name + ' · ' + (deduction.percent ? formatPercent(deduction.amount) : money(deduction.amount)) + ' · ' + { monthly: 'co miesiąc', annual: 'co rok', once: 'jednorazowo' }[deduction.frequency] + ' od ' + monthWithYear(paychecks[deduction.start]) + (deduction.endInput && deduction.frequency !== 'once' ? ' do ' + monthWithYear(paychecks[deduction.end]) : ''), startDeductionEdit);
         ui['bonus-empty'].hidden = bonuses.length > 0;
         ui['deduction-empty'].hidden = deductions.length > 0;
         if (persist) {
