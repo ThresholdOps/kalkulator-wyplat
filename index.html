@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.8.0">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.8.1">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -74,9 +74,15 @@
     #payday-v4-plan-screen .pay-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
     #payday-v4-plan-screen .pay-main { grid-column: 1; grid-row: 1; min-width: 0; padding: 31px clamp(16px, 4vw, 39px) 32px; }
     #payday-v4-plan-screen .pay-guide { grid-column: 2; grid-row: 1; position: sticky; top: 16px; z-index: 20; margin: 31px 16px 24px 0; padding: 17px; border: 1px solid var(--border); border-radius: 14px; background: var(--paper); max-height: calc(100dvh - 32px); overflow-y: auto; }
-    #payday-v4-plan-screen .pay-guide-header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+    #payday-v4-plan-screen .pay-guide-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; position: sticky; top: 0; background: var(--paper); z-index: 1; }
+    #payday-v4-plan-screen .pay-guide-heading { display: grid; gap: 3px; min-width: 0; }
+    #payday-v4-plan-screen .pay-guide-toggle { flex: none; min-height: 36px; padding: 5px 9px; }
     #payday-v4-plan-screen .pay-guide h2 { font-size: 16px; font-weight: 680; }
     #payday-v4-plan-screen .pay-guide-counter { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    #payday-v4-plan-screen .pay-guide[data-collapsed='true'] .pay-guide-header { margin-bottom: 0; }
+    #payday-v4-plan-screen .pay-guide[data-collapsed='true'] h2 { display: none; }
+    #payday-v4-plan-screen .pay-guide[data-collapsed='true'] .pay-guide-counter { color: var(--ink); white-space: normal; font-size: 13px; font-weight: 620; }
+    #payday-v4-plan-screen .pay-guide-purpose { margin-bottom: 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
     #payday-v4-plan-screen .pay-guide select { font-weight: 600; }
     #payday-v4-plan-screen .pay-guide-lead { margin: 12px 0; font-size: 14px; line-height: 1.55; }
     #payday-v4-plan-screen .pay-guide-tips { border-top: 1px solid var(--border); padding-top: 9px; margin-bottom: 12px; color: var(--muted); font-size: 13px; }
@@ -321,14 +327,17 @@
   </header>
 
   <div class="pay-workspace">
-  <aside class="pay-guide" data-ui="guide" aria-labelledby="payday-v4-guide-title">
-    <div class="pay-guide-header"><h2 id="payday-v4-guide-title">Krok po kroku</h2><span class="pay-guide-counter" data-ui="guide-counter">Krok 1 z 8</span></div>
+  <aside class="pay-guide" data-ui="guide" data-collapsed="false" aria-labelledby="payday-v4-guide-title">
+    <div class="pay-guide-header"><div class="pay-guide-heading"><h2 id="payday-v4-guide-title">Krok po kroku</h2><span class="pay-guide-counter" data-ui="guide-counter">Krok 1 z 8</span></div><button type="button" class="pay-button pay-guide-toggle" data-ui="guide-toggle" aria-label="Zwiń instrukcję" aria-expanded="true" aria-controls="payday-v4-guide-body">Zwiń</button></div>
+    <div id="payday-v4-guide-body" data-ui="guide-body">
+    <p class="pay-guide-purpose" data-ui="guide-purpose">Kalkulator policzy, ile dostaniesz na rękę w każdym miesiącu i jak rozłożyć te pieniądze, żeby starczyło też w słabszych miesiącach.</p>
     <label class="pay-field"><span class="pay-visually-hidden">Wybierz krok instrukcji</span><select data-ui="guide-picker" aria-describedby="payday-v4-guide-lead"></select></label>
-    <p class="pay-guide-lead" id="payday-v4-guide-lead" data-ui="guide-lead" aria-live="polite">Wpisz swoją pensję brutto z umowy i kliknij „Przelicz wypłaty”. Potem wybierz „Dalej”.</p>
+    <p class="pay-guide-lead" id="payday-v4-guide-lead" data-ui="guide-lead" aria-live="polite">Kliknij „Pokaż pole wynagrodzenia”, wpisz pensję brutto z umowy i kliknij „Przelicz wypłaty”. Potem wybierz „Dalej”.</p>
     <details class="pay-guide-tips" data-ui="guide-tips"><summary>Więcej wskazówek</summary><ul data-ui="guide-tip-list"></ul></details>
     <button type="button" class="pay-button pay-guide-open" data-ui="guide-open">Pokaż pole wynagrodzenia</button>
     <div class="pay-guide-nav"><button type="button" class="pay-button" data-ui="guide-back" disabled>Wstecz</button><button type="button" class="pay-button pay-primary" data-ui="guide-next">Dalej</button></div>
     <p class="pay-hint pay-danger pay-guide-message" data-ui="guide-message" role="status"></p>
+    </div>
   </aside>
   <main class="pay-main">
     <div class="pay-intro">
@@ -844,29 +853,29 @@
 
       const guideSteps = [
         { title: 'Pensja brutto', tab: 'payroll', field: 'pay-gross', action: 'Pokaż pole wynagrodzenia',
-          lead: 'Wpisz swoją pensję brutto z umowy i kliknij „Przelicz wypłaty”. Potem wybierz „Dalej”.',
+          lead: 'Kliknij „Pokaż pole wynagrodzenia”, wpisz pensję brutto z umowy i kliknij „Przelicz wypłaty”. Potem wybierz „Dalej”.',
           tips: ['Brutto to kwota z umowy, przed podatkiem i potrąceniami. Kwotę na rękę wyliczy kalkulator.', 'Pole „Stosuj od wypłaty za” określa początek tej pensji. Podwyżkę możesz dodać później, wybierając kolejny miesiąc.'] },
         { title: 'Okres planu i rezerwa', tab: 'plan', field: 'start', action: 'Otwórz „Plan i rezerwa”',
-          lead: 'Wybierz pierwszą i ostatnią pensję w planie. Wpisz odłożone pieniądze na wyrównanie wypłat; jeśli ich nie masz, wpisz 0.',
-          tips: ['W polu „Planowana rezerwa na początek planu” podaj pieniądze dostępne przed początkiem planu.', 'Opcja „Nadwyżki z pensji oraz premie” pozwala odkładać z obu źródeł. Pozostałe ustawienia możesz dostosować po pierwszym wyliczeniu.'] },
+          lead: 'Wybierz pierwszą i ostatnią pensję w planie. Rezerwa to pieniądze odłożone na słabsze miesiące. Masz takie? Wpisz kwotę. Nie masz? Zostaw 0.',
+          tips: ['Kwotę wpisz w polu „Planowana rezerwa na początek planu”. To pieniądze dostępne przed początkiem planu.', 'Wyrównanie polega na odkładaniu części wyższych wypłat i dobieraniu z rezerwy w słabszych miesiącach. Opcja „Nadwyżki z pensji oraz premie” pozwala odkładać z obu źródeł.'] },
         { title: 'Premie i nagrody', tab: 'bonuses', field: 'bonus-type', action: 'Otwórz „Premie i nagrody”',
-          lead: 'Wybierz rodzaj premii, wpisz kwotę brutto i kliknij „Dodaj premię lub nagrodę”. Bez premii? Wybierz „Dalej”.',
-          tips: ['Wybierz okres premiowy lub datę wpływu, zgodnie z polami formularza. Dla premii miesięcznej i kwartalnej data wynika z powiązanej pensji.', 'Po dodaniu zobaczysz pozycję na liście „Moje premie i nagrody”. Przyciskiem „Edytuj” poprawisz ją później. Kolejną premię dodaj tak samo.'] },
+          lead: 'Każdą wypłatę premii dodaj osobno, także gdy powtarza się co kwartał. Wpisz brutto i kliknij „Dodaj premię lub nagrodę”. Bez premii? Wybierz „Dalej”.',
+          tips: ['Cztery kwartalne wypłaty w roku to cztery osobne pozycje. Dodanie jednej premii nie tworzy kolejnych automatycznie. Dodaj każdą wypłatę, która ma wejść do planu.', 'Wybierz rodzaj i okres premiowy lub datę wpływu. Dla premii miesięcznej i kwartalnej data wynika z powiązanej pensji.', 'Dodane pozycje zobaczysz na liście „Moje premie i nagrody”. Przyciskiem „Edytuj” poprawisz je później.'] },
         { title: 'Potrącenia z wypłaty', tab: 'deductions', field: 'deduction-kind', action: 'Otwórz listę potrąceń',
           lead: 'Wybierz potrącenie, wpisz kwotę i kliknij „Dodaj potrącenie”. Powtórz dla każdej pozycji. Bez potrąceń? Wybierz „Dalej”.',
           tips: ['To np. ubezpieczenie grupowe, pakiet medyczny lub składka związkowa potrącana przez pracodawcę. Podatek i składki kalkulator wylicza sam.', '„Terminy i sposób naliczenia” pozwalają wybrać procent, jednorazowe potrącenie lub cykl roczny. Pozycje poprawisz przyciskiem „Edytuj”. PPK, PPE i KZP ustawisz w następnych krokach.'] },
         { title: 'PPK i PPE — jeśli korzystasz', tab: 'deductions', program: 'pension', action: 'Otwórz PPK i PPE',
-          lead: 'Włącz tylko programy, w których uczestniczysz: PPK lub PPE. Podaj wpłaty według paska lub zasad programu. Nie korzystasz? Wybierz „Dalej”.',
-          tips: ['W PPK podstawowe stawki są wpisane. W PPE podaj własną wpłatę i wpłatę firmy — to dwie różne kwoty. Stawkę firmy odczytaj z zasad programu lub paska.', 'Wybierz, czy wpłata firmy jest rozliczana w tym samym czy następnym miesiącu. Gdy program trwał przed 2026 r., drugi wariant wymaga wpłaty z 2025 r. do rozliczenia w styczniu, także gdy wynosi 0 zł.'] },
+          lead: 'Włącz programy, w których uczestniczysz: PPK, PPE albo oba. Podaj wpłaty według paska lub zasad programu. Nie korzystasz? Wybierz „Dalej”.',
+          tips: ['W PPK podstawowe stawki są wpisane. W PPE podaj własną wpłatę i wpłatę firmy — to dwie różne kwoty. Odczytaj je z zasad programu lub paska.', 'Wpłaty firmy nie dostajesz do ręki, ale wpływa ona na podatek potrącany z Twojej pensji.', 'Nie wiesz, kiedy firma rozlicza wpłatę? Możesz zacząć od „W tym samym miesiącu”. To założenie prognozy — potwierdź je przed porównaniem wyniku z paskiem.', 'Jeśli wybierzesz „W następnym miesiącu”, a program trwał przed 2026 r., podaj wpłatę firmy z 2025 r. rozliczaną w styczniu 2026, także gdy wynosi 0 zł.'] },
         { title: 'Kasa KZP — jeśli korzystasz', tab: 'deductions', program: 'kzp', action: 'Otwórz ustawienia KZP',
           lead: 'Jeśli uczestniczysz w kasie, zaznacz „Uwzględnij potrącenia KZP”. Wpisz wkład i ewentualną ratę pożyczki. Nie korzystasz? Wybierz „Dalej”.',
           tips: ['Wkład miesięczny to Twoje oszczędności w kasie. Rata pożyczki to osobne potrącenie i spłata długu.', 'Wpisz pierwszy miesiąc potrącenia. W polach zadłużenia i raty wpisz 0, jeśli nie spłacasz pożyczki.'] },
-        { title: 'Ile chcesz mieć na rękę?', action: 'Pokaż wybór budżetu',
-          lead: 'Wybierz „Chcę co miesiąc mieć budżet w wysokości” i wpisz kwotę netto. Możesz też wybrać „Wylicz maksymalną kwotę”.',
-          tips: ['Netto to pieniądze na rękę. Automatyczne maksimum to jedna kwota możliwa do utrzymania w całym wybranym planie.', 'Opcja „Tylko wypłaty na rękę” pokazuje przelewy bez wyrównywania. Wynik aktualizuje się po zmianie wyboru lub kwoty.'] },
+        { title: 'Ile chcesz wydawać co miesiąc?', action: 'Pokaż wybór budżetu',
+          lead: 'Najprościej: wybierz „Wylicz maksymalną kwotę”. Wynik pojawi się sam. Własny budżet ustaw przez „Chcę co miesiąc mieć budżet w wysokości” i wpisz kwotę netto.',
+          tips: ['Automatyczne maksimum to najwyższa wspólna kwota dla miesięcy planu, możliwa według wpisanych wpływów i rezerwy. Netto oznacza pieniądze na rękę.', 'Opcja „Tylko wypłaty na rękę” pokazuje przelewy bez wyrównywania. Wynik aktualizuje się po zmianie wyboru lub kwoty.'] },
         { title: 'Sprawdź wynik miesiąc po miesiącu', action: 'Pokaż wyniki',
           lead: 'Sprawdź „Wpłynie na konto”, a potem tabelę „Miesiąc po miesiącu”. Czerwony komunikat podpowiada, co trzeba poprawić.',
-          tips: ['„Wpłynie na konto” to przelew po potrąceniach. „Kwota po wyrównaniu” to stały budżet. Karta rezerwy mówi, ile odłożyć albo dobrać.', 'Wybierz miesiąc na wykresie, w tabeli lub na liście u góry. Plan zapisuje się w tej przeglądarce na tym urządzeniu; komunikat przy początku planu potwierdza zapis.'] },
+          tips: ['„Wpłynie na konto” to przelew po potrąceniach. „Kwota po wyrównaniu” to stały budżet. Karta rezerwy mówi, ile odłożyć albo dobrać.', 'Wybierz miesiąc na wykresie, w tabeli lub na liście u góry. Napis „Zapisano plan na tym urządzeniu” pod tytułem strony potwierdza zapis w tej przeglądarce.'] },
       ];
       let guideStep = 0;
       options(ui['guide-picker'], guideSteps.map((step, index) => [index, (index + 1) + '. ' + step.title]));
@@ -875,10 +884,20 @@
         root.style.setProperty('--guide-height', Math.ceil(ui.guide.getBoundingClientRect().height) + 'px');
       }
 
+      function updateGuideHeader() {
+        const collapsed = ui['guide-body'].hidden;
+        ui.guide.dataset.collapsed = String(collapsed);
+        ui['guide-counter'].textContent = 'Krok ' + (guideStep + 1) + ' z ' + guideSteps.length + (collapsed ? ' · ' + guideSteps[guideStep].title : '');
+        ui['guide-toggle'].textContent = collapsed ? 'Rozwiń' : 'Zwiń';
+        ui['guide-toggle'].setAttribute('aria-label', collapsed ? 'Rozwiń instrukcję' : 'Zwiń instrukcję');
+        ui['guide-toggle'].setAttribute('aria-expanded', String(!collapsed));
+        updateGuideHeight();
+      }
+
       function renderGuideStep(index) {
         guideStep = index;
         const step = guideSteps[index];
-        ui['guide-counter'].textContent = 'Krok ' + (index + 1) + ' z ' + guideSteps.length;
+        ui['guide-purpose'].hidden = index !== 0;
         ui['guide-picker'].value = String(index);
         ui['guide-lead'].textContent = step.lead;
         ui['guide-tip-list'].replaceChildren(...step.tips.map(tip => create('li', tip)));
@@ -887,7 +906,7 @@
         ui['guide-back'].disabled = index === 0;
         ui['guide-next'].textContent = index === guideSteps.length - 1 ? 'Od początku' : 'Dalej';
         ui['guide-message'].textContent = '';
-        updateGuideHeight();
+        updateGuideHeader();
       }
 
       function guidePendingMessage() {
@@ -915,7 +934,7 @@
           target = ui[guideStep === 6 ? 'budget-settings' : 'overview'];
         }
         updateGuideHeight();
-        const destination = target.closest('.pay-field') ?? target;
+        const destination = step.program ? target.closest('details') : target.closest('.pay-field, .pay-check') ?? target;
         destination.scrollIntoView({ block: 'start', behavior: 'auto' });
         if (target.matches('input, select, [tabindex]')) target.focus({ preventScroll: true });
       }
@@ -936,6 +955,10 @@
       ui['guide-next'].addEventListener('click', () => moveGuide((guideStep + 1) % guideSteps.length));
       ui['guide-open'].addEventListener('click', showGuidePlace);
       ui['guide-picker'].addEventListener('change', () => moveGuide(Number(ui['guide-picker'].value)));
+      ui['guide-toggle'].addEventListener('click', () => {
+        ui['guide-body'].hidden = !ui['guide-body'].hidden;
+        updateGuideHeader();
+      });
       ui['guide-tips'].addEventListener('toggle', updateGuideHeight);
       if ('ResizeObserver' in window) new ResizeObserver(updateGuideHeight).observe(ui.guide);
       window.addEventListener('resize', updateGuideHeight);
