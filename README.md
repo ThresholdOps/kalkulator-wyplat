@@ -1,6 +1,6 @@
 # Kalkulator wypłat
 
-Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.8.0.
+Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.8.1.
 
 [Kalkulator na GitHub Pages](https://thresholdops.github.io/kalkulator-wyplat/)
 
@@ -11,6 +11,10 @@ Plan zapisuje się automatycznie w tej przeglądarce na tym urządzeniu i wraca 
 Wersja 0.8.0 dodaje stale widoczną instrukcję „Krok po kroku”. Na komputerze jest przyklejona obok kalkulatora, a na mniejszych ekranach u góry strony, również podczas edycji i przewijania ustawień. Pokazuje jeden z ośmiu kroków: pensja brutto, okres planu i rezerwa, premie, potrącenia, PPK/PPE, KZP, budżet netto, wyniki i tabela. Przycisk „Dalej” prowadzi do odpowiedniego formularza, a dodatkowy przycisk pozwala ponownie pokazać bieżące miejsce. Lista kroków umożliwia wybór konkretnego tematu. Wskazówki podają nazwy pól i przycisków oraz sposób pominięcia elementów, które pracownika nie dotyczą.
 
 Instrukcja przypomina o niezastosowanej pensji oraz o premii lub potrąceniu czekającym na dodanie lub zapis edycji. Prowadzi także do poprawy brakujących danych aktywnych programów i pustego budżetu ręcznego. Ręczne przełączanie zakładek lub wejście w PPK/PPE, KZP i wybór budżetu dopasowuje temat pomocy. Nawigacja instrukcji nie zmienia kwot, nie tworzy zapisanego planu i nie oznacza danych jako potwierdzonych; „Od początku” wraca do pierwszej instrukcji. Podczas nowego otwarcia strony przewodnik zaczyna od pensji, zachowując odtworzony plan.
+
+Wersja 0.8.1 poprawia przewijanie do początku modułów PPK/PPE i KZP na wąskich ekranach: pod instrukcją widoczny jest tytuł modułu i pole jego włączenia. Przycisk „Zwiń” chowa treść pomocy, pozostawiając przyklejony pasek z numerem i nazwą kroku oraz przyciskiem „Rozwiń”. Ręczna zmiana zakładek nadal aktualizuje krok, a zwinięta instrukcja pozostaje zwinięta podczas wpisywania danych. Zwijanie i rozwijanie nie zmienia planu.
+
+Instrukcja wyjaśnia na początku cel kalkulatora i każe najpierw otworzyć pole wynagrodzenia. Definiuje rezerwę i wyrównanie, przypomina o osobnym dodaniu każdej wypłaty premii, dopuszcza PPK i PPE jednocześnie oraz tłumaczy wpływ wpłaty firmy na podatek. Nieznany termin rozliczenia można wstępnie przyjąć jako bieżący miesiąc, z jawnym opisem, że to założenie prognozy do potwierdzenia. Krok budżetu zaczyna od automatycznego maksimum zależnego od wpisanych danych; nie nazywa go bezwarunkowo bezpieczną kwotą. Wskazówka o zapisie wskazuje konkretny napis pod tytułem strony.
 
 Wersja 0.7.0 dodaje opcjonalne moduły PPK i PPE w zakładce „Potrącenia”. Wpłaty pracownika pomniejszają przelew po naliczeniu podatku. Wpłaty pracodawcy zwiększają dochód i licznik PIT, ale nie gotówkę ani podstawy składek społecznych i zdrowotnej. Oba programy są domyślnie wyłączone.
 
