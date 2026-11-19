@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.7.0">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.7.1">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -626,7 +626,7 @@
       const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
       const storageKey = 'kalkulator-wyplat.plan.v1';
       const initialPaychecks = paychecks.map(pay => ({ ...pay }));
-      const pensionDefaults = { 'ppk-enabled': false, 'ppk-start': '0', 'ppk-end': '23', 'ppk-extra-employee': '0', 'ppk-extra-employer': '0', 'ppk-timing': 'same', 'ppk-opening': '', 'ppe-enabled': false, 'ppe-start': '0', 'ppe-end': '23', 'ppe-employee-unit': 'amount', 'ppe-employee': '0', 'ppe-employer-unit': 'percent', 'ppe-employer': '', 'ppe-timing': 'same', 'ppe-opening': '' };
+      const pensionDefaults = { 'ppk-enabled': false, 'ppk-start': '-1', 'ppk-end': '23', 'ppk-extra-employee': '0', 'ppk-extra-employer': '0', 'ppk-timing': 'same', 'ppk-opening': '', 'ppe-enabled': false, 'ppe-start': '-1', 'ppe-end': '23', 'ppe-employee-unit': 'amount', 'ppe-employee': '0', 'ppe-employer-unit': 'percent', 'ppe-employer': '', 'ppe-timing': 'same', 'ppe-opening': '' };
       const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027', ...Object.keys(pensionDefaults)];
       let savedSnapshot = null;
       let storageBlocked = false;
@@ -653,7 +653,10 @@
       for (const kind of ['ppk', 'ppe']) {
         options(config[kind + '-start'], [['-1', 'Program trwał już przed 2026 r.'], ...monthOptions]);
         options(config[kind + '-end'], monthOptions);
-        config[kind + '-end'].value = '23';
+      }
+      for (const [key, initial] of Object.entries(pensionDefaults)) {
+        if (typeof initial === 'boolean') config[key].checked = initial;
+        else config[key].value = initial;
       }
       config.end.value = '11';
       config['bonus-salary'].value = '5';
@@ -922,7 +925,10 @@
             event.salaryOwn += ownPercent ? Math.min(event.ownPpe, roundRate(salary, number('ppe-employee'))) : event.ownPpe;
             const companyPercent = data['ppe-employer-unit'] === 'percent';
             const company = companyPercent ? roundRate(gross, number('ppe-employer')) : fixedHere ? number('ppe-employer') : 0;
-            if (!companyPercent && company > roundRate(monthBases.get(month) ?? 0, 700)) issue = { key: 'ppe-employer', message: 'PPE — wpłata firmy za ' + month + ' przekracza 7% podstawy w tym miesiącu.' };
+            if (!issue && !companyPercent && company > roundRate(monthBases.get(month) ?? 0, 700)) {
+              const label = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(month + '-01T12:00:00Z'));
+              issue = { key: 'ppe-employer', message: 'PPE — wpłata firmy przekracza 7% podstawy. Pierwszy miesiąc: ' + label + '.' };
+            }
             send('ppe', event, company, companyPercent ? roundRate(salary, number('ppe-employer')) : company);
           }
         }
