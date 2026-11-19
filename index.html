@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-<div id="payday-v4-plan-screen" lang="pl" data-release="0.8.1">
+<div id="payday-v4-plan-screen" lang="pl" data-release="0.8.2">
   <style>
     #payday-v4-plan-screen {
       color-scheme: light dark;
@@ -675,6 +675,7 @@
       const editing = { bonus: null, deduction: null };
       const addLabels = { bonus: 'Dodaj premię lub nagrodę', deduction: 'Dodaj potrącenie' };
       const storageKey = 'kalkulator-wyplat.plan.v1';
+      const guideStorageKey = 'kalkulator-wyplat.guide.collapsed.v1';
       const initialPaychecks = paychecks.map(pay => ({ ...pay }));
       const pensionDefaults = { 'ppk-enabled': false, 'ppk-start': '-1', 'ppk-end': '23', 'ppk-extra-employee': '0', 'ppk-extra-employer': '0', 'ppk-timing': 'same', 'ppk-opening': '', 'ppe-enabled': false, 'ppe-start': '-1', 'ppe-end': '23', 'ppe-employee-unit': 'amount', 'ppe-employee': '0', 'ppe-employer-unit': 'percent', 'ppe-employer': '', 'ppe-timing': 'same', 'ppe-opening': '' };
       const savedConfigKeys = ['start', 'end', 'source', 'initial', 'confirmed', 'floor', 'manual', 'optional', 'kzp-enabled', 'kzp-start', 'kzp-savings', 'kzp-initial', 'kzp-debt', 'kzp-rate', 'tax-2027', ...Object.keys(pensionDefaults)];
@@ -860,7 +861,7 @@
           tips: ['Kwotę wpisz w polu „Planowana rezerwa na początek planu”. To pieniądze dostępne przed początkiem planu.', 'Wyrównanie polega na odkładaniu części wyższych wypłat i dobieraniu z rezerwy w słabszych miesiącach. Opcja „Nadwyżki z pensji oraz premie” pozwala odkładać z obu źródeł.'] },
         { title: 'Premie i nagrody', tab: 'bonuses', field: 'bonus-type', action: 'Otwórz „Premie i nagrody”',
           lead: 'Każdą wypłatę premii dodaj osobno, także gdy powtarza się co kwartał. Wpisz brutto i kliknij „Dodaj premię lub nagrodę”. Bez premii? Wybierz „Dalej”.',
-          tips: ['Cztery kwartalne wypłaty w roku to cztery osobne pozycje. Dodanie jednej premii nie tworzy kolejnych automatycznie. Dodaj każdą wypłatę, która ma wejść do planu.', 'Wybierz rodzaj i okres premiowy lub datę wpływu. Dla premii miesięcznej i kwartalnej data wynika z powiązanej pensji.', 'Dodane pozycje zobaczysz na liście „Moje premie i nagrody”. Przyciskiem „Edytuj” poprawisz je później.'] },
+          tips: ['Cztery kwartalne wypłaty w roku to cztery osobne pozycje. Dodanie jednej premii nie tworzy kolejnych automatycznie. Dodaj każdą wypłatę, która ma wejść do planu.', 'Wybierz rodzaj i okres premiowy lub datę wpływu. Premia miesięczna i kwartalna przychodzi razem z pensją.', 'Dodane pozycje zobaczysz na liście „Moje premie i nagrody”. Przyciskiem „Edytuj” poprawisz je później.'] },
         { title: 'Potrącenia z wypłaty', tab: 'deductions', field: 'deduction-kind', action: 'Otwórz listę potrąceń',
           lead: 'Wybierz potrącenie, wpisz kwotę i kliknij „Dodaj potrącenie”. Powtórz dla każdej pozycji. Bez potrąceń? Wybierz „Dalej”.',
           tips: ['To np. ubezpieczenie grupowe, pakiet medyczny lub składka związkowa potrącana przez pracodawcę. Podatek i składki kalkulator wylicza sam.', '„Terminy i sposób naliczenia” pozwalają wybrać procent, jednorazowe potrącenie lub cykl roczny. Pozycje poprawisz przyciskiem „Edytuj”. PPK, PPE i KZP ustawisz w następnych krokach.'] },
@@ -872,7 +873,7 @@
           tips: ['Wkład miesięczny to Twoje oszczędności w kasie. Rata pożyczki to osobne potrącenie i spłata długu.', 'Wpisz pierwszy miesiąc potrącenia. W polach zadłużenia i raty wpisz 0, jeśli nie spłacasz pożyczki.'] },
         { title: 'Ile chcesz wydawać co miesiąc?', action: 'Pokaż wybór budżetu',
           lead: 'Najprościej: wybierz „Wylicz maksymalną kwotę”. Wynik pojawi się sam. Własny budżet ustaw przez „Chcę co miesiąc mieć budżet w wysokości” i wpisz kwotę netto.',
-          tips: ['Automatyczne maksimum to najwyższa wspólna kwota dla miesięcy planu, możliwa według wpisanych wpływów i rezerwy. Netto oznacza pieniądze na rękę.', 'Opcja „Tylko wypłaty na rękę” pokazuje przelewy bez wyrównywania. Wynik aktualizuje się po zmianie wyboru lub kwoty.'] },
+          tips: ['To najwyższa kwota, którą możesz wydawać w każdym miesiącu planu. Netto oznacza pieniądze na rękę.', 'Opcja „Tylko wypłaty na rękę” pokazuje przelewy bez wyrównywania. Wynik aktualizuje się po zmianie wyboru lub kwoty.'] },
         { title: 'Sprawdź wynik miesiąc po miesiącu', action: 'Pokaż wyniki',
           lead: 'Sprawdź „Wpłynie na konto”, a potem tabelę „Miesiąc po miesiącu”. Czerwony komunikat podpowiada, co trzeba poprawić.',
           tips: ['„Wpłynie na konto” to przelew po potrąceniach. „Kwota po wyrównaniu” to stały budżet. Karta rezerwy mówi, ile odłożyć albo dobrać.', 'Wybierz miesiąc na wykresie, w tabeli lub na liście u góry. Napis „Zapisano plan na tym urządzeniu” pod tytułem strony potwierdza zapis w tej przeglądarce.'] },
@@ -956,6 +957,7 @@
       ui['guide-picker'].addEventListener('change', () => moveGuide(Number(ui['guide-picker'].value)));
       ui['guide-toggle'].addEventListener('click', () => {
         ui['guide-body'].hidden = !ui['guide-body'].hidden;
+        try { window.localStorage.setItem(guideStorageKey, String(ui['guide-body'].hidden)); } catch { /* The guide still works when browser storage is unavailable. */ }
         updateGuideHeader();
       });
       ui['guide-tips'].addEventListener('toggle', updateGuideHeight);
@@ -1932,6 +1934,7 @@
       showDeductionFields();
       loadPlan();
       refresh(false);
+      try { ui['guide-body'].hidden = window.localStorage.getItem(guideStorageKey) === 'true'; } catch { /* Start expanded when the preference cannot be read. */ }
       renderGuideStep(0);
     })();
   </script>
