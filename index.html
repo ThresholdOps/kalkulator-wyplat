@@ -82,7 +82,7 @@
     #payday-v4-plan-screen .pay-guide[data-collapsed='true'] .pay-guide-header { margin-bottom: 0; }
     #payday-v4-plan-screen .pay-guide[data-collapsed='true'] h2 { display: none; }
     #payday-v4-plan-screen .pay-guide[data-collapsed='true'] .pay-guide-counter { color: var(--ink); white-space: normal; font-size: 13px; font-weight: 620; }
-    #payday-v4-plan-screen .pay-guide-purpose { margin-bottom: 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    #payday-v4-plan-screen .pay-purpose { margin-top: 10px; max-width: 60ch; color: var(--muted); font-size: 13px; line-height: 1.45; }
     #payday-v4-plan-screen .pay-guide select { font-weight: 600; }
     #payday-v4-plan-screen .pay-guide-lead { margin: 12px 0; font-size: 14px; line-height: 1.55; }
     #payday-v4-plan-screen .pay-guide-tips { border-top: 1px solid var(--border); padding-top: 9px; margin-bottom: 12px; color: var(--muted); font-size: 13px; }
@@ -330,7 +330,6 @@
   <aside class="pay-guide" data-ui="guide" data-collapsed="false" aria-labelledby="payday-v4-guide-title">
     <div class="pay-guide-header"><div class="pay-guide-heading"><h2 id="payday-v4-guide-title">Krok po kroku</h2><span class="pay-guide-counter" data-ui="guide-counter">Krok 1 z 8</span></div><button type="button" class="pay-button pay-guide-toggle" data-ui="guide-toggle" aria-label="Zwiń instrukcję" aria-expanded="true" aria-controls="payday-v4-guide-body">Zwiń</button></div>
     <div id="payday-v4-guide-body" data-ui="guide-body">
-    <p class="pay-guide-purpose" data-ui="guide-purpose">Kalkulator policzy, ile dostaniesz na rękę w każdym miesiącu i jak rozłożyć te pieniądze, żeby starczyło też w słabszych miesiącach.</p>
     <label class="pay-field"><span class="pay-visually-hidden">Wybierz krok instrukcji</span><select data-ui="guide-picker" aria-describedby="payday-v4-guide-lead"></select></label>
     <p class="pay-guide-lead" id="payday-v4-guide-lead" data-ui="guide-lead" aria-live="polite">Kliknij „Pokaż pole wynagrodzenia”, wpisz pensję brutto z umowy i kliknij „Przelicz wypłaty”. Potem wybierz „Dalej”.</p>
     <details class="pay-guide-tips" data-ui="guide-tips"><summary>Więcej wskazówek</summary><ul data-ui="guide-tip-list"></ul></details>
@@ -344,6 +343,7 @@
       <div>
         <h1>Ile dostanę na rękę?</h1>
         <p class="pay-period" data-ui="period-label">Plan · styczeń–grudzień 2026</p>
+        <p class="pay-purpose">Kalkulator policzy, ile dostaniesz na rękę w każdym miesiącu i jak rozłożyć te pieniądze, żeby starczyło też w słabszych miesiącach.</p>
       </div>
       <div class="pay-picker">
         <label for="payday-v4-plan-month">Miesiąc wypłaty</label>
@@ -897,7 +897,6 @@
       function renderGuideStep(index) {
         guideStep = index;
         const step = guideSteps[index];
-        ui['guide-purpose'].hidden = index !== 0;
         ui['guide-picker'].value = String(index);
         ui['guide-lead'].textContent = step.lead;
         ui['guide-tip-list'].replaceChildren(...step.tips.map(tip => create('li', tip)));
