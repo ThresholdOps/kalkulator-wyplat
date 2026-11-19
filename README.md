@@ -1,6 +1,6 @@
 # Kalkulator wypłat
 
-Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.8.1.
+Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.8.2.
 
 [Kalkulator na GitHub Pages](https://thresholdops.github.io/kalkulator-wyplat/)
 
@@ -15,6 +15,8 @@ Instrukcja przypomina o niezastosowanej pensji oraz o premii lub potrąceniu cze
 Wersja 0.8.1 poprawia przewijanie do początku modułów PPK/PPE i KZP na wąskich ekranach: pod instrukcją widoczny jest tytuł modułu i pole jego włączenia. Przycisk „Zwiń” chowa treść pomocy, pozostawiając przyklejony pasek z numerem i nazwą kroku oraz przyciskiem „Rozwiń”. Ręczna zmiana zakładek nadal aktualizuje krok, a zwinięta instrukcja pozostaje zwinięta podczas wpisywania danych. Zwijanie i rozwijanie nie zmienia planu.
 
 Instrukcja wyjaśnia na początku cel kalkulatora i każe najpierw otworzyć pole wynagrodzenia. Definiuje rezerwę i wyrównanie, przypomina o osobnym dodaniu każdej wypłaty premii, dopuszcza PPK i PPE jednocześnie oraz tłumaczy wpływ wpłaty firmy na podatek. Nieznany termin rozliczenia można wstępnie przyjąć jako bieżący miesiąc, z jawnym opisem, że to założenie prognozy do potwierdzenia. Krok budżetu zaczyna od automatycznego maksimum zależnego od wpisanych danych; nie nazywa go bezwarunkowo bezpieczną kwotą. Wskazówka o zapisie wskazuje konkretny napis pod tytułem strony.
+
+Wersja 0.8.2 zapamiętuje zwinięcie i rozwinięcie instrukcji po odświeżeniu i przy kolejnych wizytach w tej przeglądarce. Preferencja ma osobny wpis `kalkulator-wyplat.guide.collapsed.v1`, więc zmiana widoku pomocy nie tworzy ani nie nadpisuje planu. Bez dostępu do pamięci przeglądarki zwijanie nadal działa w bieżącej karcie. Usunięcie planu nie kasuje preferencji pomocy. Treść kroków 3 i 7 używa prostych zdań: premia miesięczna i kwartalna przychodzi razem z pensją, a maksimum to najwyższa kwota, którą można wydawać w każdym miesiącu planu.
 
 Wersja 0.7.0 dodaje opcjonalne moduły PPK i PPE w zakładce „Potrącenia”. Wpłaty pracownika pomniejszają przelew po naliczeniu podatku. Wpłaty pracodawcy zwiększają dochód i licznik PIT, ale nie gotówkę ani podstawy składek społecznych i zdrowotnej. Oba programy są domyślnie wyłączone.
 
