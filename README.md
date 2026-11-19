@@ -1,12 +1,16 @@
 # Kalkulator wypłat
 
-Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.7.1.
+Polskojęzyczny kalkulator wypłat netto, premii, potrąceń i miesięcznego budżetu. Wersja 0.8.0.
 
 [Kalkulator na GitHub Pages](https://thresholdops.github.io/kalkulator-wyplat/)
 
 Otwórz `index.html` w przeglądarce, aby użyć kalkulatora lokalnie. Cała aplikacja mieści się w tym pliku, a obliczenia wykonują się w przeglądarce. Kwoty pokazane na starcie są przykładowe. Wyniki mają charakter szacunkowy, a przyjęte założenia znajdziesz pod wynikiem.
 
 Plan zapisuje się automatycznie w tej przeglądarce na tym urządzeniu i wraca po odświeżeniu strony. Zapis obejmuje wynagrodzenie i jego zmiany, premie, potrącenia, KZP oraz ustawienia budżetu i rezerwy. Przycisk „Usuń zapisany plan” pozwala wrócić do danych przykładowych.
+
+Wersja 0.8.0 dodaje stale widoczną instrukcję „Krok po kroku”. Na komputerze jest przyklejona obok kalkulatora, a na mniejszych ekranach u góry strony, również podczas edycji i przewijania ustawień. Pokazuje jeden z ośmiu kroków: pensja brutto, okres planu i rezerwa, premie, potrącenia, PPK/PPE, KZP, budżet netto, wyniki i tabela. Przycisk „Dalej” prowadzi do odpowiedniego formularza, a dodatkowy przycisk pozwala ponownie pokazać bieżące miejsce. Lista kroków umożliwia wybór konkretnego tematu. Wskazówki podają nazwy pól i przycisków oraz sposób pominięcia elementów, które pracownika nie dotyczą.
+
+Instrukcja przypomina o niezastosowanej pensji oraz o premii lub potrąceniu czekającym na dodanie lub zapis edycji. Prowadzi także do poprawy brakujących danych aktywnych programów i pustego budżetu ręcznego. Ręczne przełączanie zakładek lub wejście w PPK/PPE, KZP i wybór budżetu dopasowuje temat pomocy. Nawigacja instrukcji nie zmienia kwot, nie tworzy zapisanego planu i nie oznacza danych jako potwierdzonych; „Od początku” wraca do pierwszej instrukcji. Podczas nowego otwarcia strony przewodnik zaczyna od pensji, zachowując odtworzony plan.
 
 Wersja 0.7.0 dodaje opcjonalne moduły PPK i PPE w zakładce „Potrącenia”. Wpłaty pracownika pomniejszają przelew po naliczeniu podatku. Wpłaty pracodawcy zwiększają dochód i licznik PIT, ale nie gotówkę ani podstawy składek społecznych i zdrowotnej. Oba programy są domyślnie wyłączone.
 
