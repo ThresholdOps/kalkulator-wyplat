@@ -841,6 +841,22 @@ test('fixed employer PPE above 7 percent of the monthly basis is rejected', () =
   assert.match(app.calculatePlan().error, /przekracza 7%/);
 });
 
+test('fixed employer PPE reports the first invalid calendar month using a Polish month name', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-employer-unit': 'amount', 'ppe-employer': '701' });
+  for (let index = 0; index < 5; index++) app.context.paychecks[index].gross = 1100000;
+  const message = app.calculatePlan().error;
+  assert.match(message, /Pierwszy miesiąc: czerwiec 2026\./);
+  assert.doesNotMatch(message, /2027-12|grudzień 2027/);
+});
+
+test('PPE validation uses the actual payment month after a salary date correction', () => {
+  const app = pensionSubject({ 'ppe-enabled': true, 'ppe-start': '0', 'ppe-end': '0', 'ppe-employer-unit': 'amount', 'ppe-employer': '701' });
+  app.context.paychecks[1].date = '2026-01-30';
+  assert.equal(app.payrollTimeline().pensionIssue, null);
+  app.context.paychecks[1].date = '2026-02-26';
+  assert.match(app.payrollTimeline().pensionIssue.message, /Pierwszy miesiąc: styczeń 2026\./);
+});
+
 test('old 0.6.1 plans without program fields keep all data and leave both modules disabled', () => {
   const app = storageSubject();
   app.savePlan();
@@ -852,7 +868,55 @@ test('old 0.6.1 plans without program fields keep all data and leave both module
   assert.match(restored.context.ui['storage-status'].textContent, /Odtworzono/);
   assert.equal(restored.context.config['ppk-enabled'].checked, false);
   assert.equal(restored.context.config['ppe-enabled'].checked, false);
+  assert.equal(restored.context.config['ppk-start'].value, '-1');
+  assert.equal(restored.context.config['ppe-start'].value, '-1');
   assert.equal(restored.context.paychecks[0].gross, 1450000);
+});
+
+for (const kind of ['ppk', 'ppe']) {
+  test('new and migrated plans both require the prior-year opening payment for delayed ' + kind.toUpperCase(), () => {
+    const fresh = pensionSubject({ [kind + '-enabled']: true, [kind + '-timing']: 'next', 'ppe-employer': '7' });
+    assert.equal(fresh.pensionInputError()?.key, kind + '-opening');
+    fresh.context.config[kind + '-opening'].value = '0';
+    assert.equal(fresh.pensionInputError(), null);
+    const withoutOpening = fresh.payrollTimeline().pays[0].receivedTransfer;
+    fresh.context.config[kind + '-opening'].value = kind === 'ppk' ? '150' : '700';
+    assert.equal(withoutOpening - fresh.payrollTimeline().pays[0].receivedTransfer, kind === 'ppk' ? 1800 : 8400);
+    const app = storageSubject();
+    app.savePlan();
+    const legacy = JSON.parse([...app.storage.values()][0]);
+    for (const key of Object.keys(app.context.subject.pensionDefaults)) delete legacy.config[key];
+    app.storage.set('kalkulator-wyplat.plan.v1', JSON.stringify(legacy));
+    const restored = storageSubject(app.storage, false, false);
+    restored.loadPlan();
+    restored.context.config[kind + '-enabled'].checked = true;
+    restored.context.config[kind + '-timing'].value = 'next';
+    restored.context.config['ppe-employer'].value = '7';
+    assert.equal(restored.context.subject.pensionInputError()?.key, kind + '-opening');
+    restored.context.config[kind + '-opening'].value = '0';
+    assert.equal(restored.context.subject.pensionInputError(), null);
+    restored.context.config[kind + '-opening'].value = kind === 'ppk' ? '150' : '700';
+    assert.equal(restored.context.subject.pensionInputError(), null);
+  });
+}
+
+test('an explicit January 2026 program start survives reload and does not require a 2025 payment', () => {
+  const app = storageSubject();
+  for (const kind of ['ppk', 'ppe']) {
+    app.context.config[kind + '-enabled'].checked = true;
+    app.context.config[kind + '-start'].value = '0';
+    app.context.config[kind + '-timing'].value = 'next';
+  }
+  app.context.config['ppe-employer'].value = '7';
+  assert.equal(app.context.subject.pensionInputError(), null);
+  app.savePlan();
+  const restored = storageSubject(app.storage, false, false);
+  restored.loadPlan();
+  for (const kind of ['ppk', 'ppe']) {
+    assert.equal(restored.context.config[kind + '-start'].value, '0');
+    assert.equal(restored.context.config[kind + '-opening'].value, '');
+  }
+  assert.equal(restored.context.subject.pensionInputError(), null);
 });
 
 test('program settings, timing and opening payments survive saved plan restoration', () => {
